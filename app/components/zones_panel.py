@@ -1,15 +1,29 @@
-"""Owner: Mirela (map by Lamia). Field zones expander: pre-rendered PNG, no live satellite call."""
+"""Field zones panel (spec 8; map by Lamia): pre-rendered Sentinel-1 zone PNG of a real field, no live API call."""
 import streamlit as st
 
 import ui
 from config import ASSETS_DIR
 
+ZONES = [("wettest: check first / avoid when wet", 20.8), ("normal", 41.5), ("drier", 20.8)]   # ha, pre-event test
+
 
 def render() -> None:
-    with st.expander("Field zones (real field example)"):
+    with st.expander("Field zones: where to be careful on a real field (Sentinel-1 radar)"):
         png = ASSETS_DIR / "zones.png"
-        if png.exists():
-            st.image(str(png), caption="Gasawy field, Sentinel-1 VV change 29 Sep - 5 Oct 2016")
-        else:
-            st.info("app/assets/zones.png not added yet (Lamia's zone map).")
-        ui.show_origin("real")
+        c1, c2 = st.columns([3, 2])
+        with c1:
+            if png.exists():
+                st.image(str(png), width="stretch")
+            else:
+                st.info("app/assets/zones.png is missing (Lamia's zone map).")
+        with c2:
+            st.markdown("**Real 80.7 ha field near Poznań** (28 km from the demo region, same weather), "
+                        "Sentinel-1 radar, change 29 Sep -> 5 Oct 2016 after 37 mm of rain.")
+            for name, ha in ZONES:
+                st.markdown(f"- {name}: **{ha} ha**")
+            st.caption("The radar saw the field ~5 dB wetter than before the rain, still wet on 11-14 Oct (the demo "
+                       "days). Consistent with the model, not proof: radar also responds to roughness and residue. "
+                       "In production FieldGo uses the farmer's own field boundaries. Zones show WHERE to be careful, "
+                       "never WHETHER to go.")
+            ui.show_origin("real", False)
+            st.caption("Contains modified Copernicus Sentinel data [2016]. Boundary: GUGiK ULDK.")

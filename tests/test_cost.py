@@ -68,3 +68,19 @@ def test_real_wait_cost_demo_day_and_no_go_day():
     w = cost.wait_cost("2016-10-13", {})
     assert 1000 <= w["eur"] <= 2500                                          # pre-event ~ EUR 1.7k
     assert cost.wait_cost("2016-10-15", {})["eur"] == 0                       # nothing workable: waiting is free
+
+
+# ---------------------------------------------------------------- test 12 (Add-on 3, spec 6.8.3)
+def test_12_entry_cost_zero_when_go_and_no_go_at_least_caution():
+    kw = dict(params={"yield_t_ha": {"BARL": 5.0}, "price_eur_t": {"BARL": 200.0}})
+    assert cost.entry_cost("GO", "L5", "BARL", 10.0, **kw)["eur"] == 0
+    for cls in ("L1", "L2", "L3", "L4", "L5"):
+        assert cost.entry_cost("NO-GO", cls, "BARL", 10.0, **kw)["eur"] >= cost.entry_cost("CAUTION", cls, "BARL", 10.0, **kw)["eur"]
+    # L5 NO-GO: 15% x 30% trafficked x 10 ha x 5 t x EUR 200
+    assert cost.entry_cost("NO-GO", "L5", "BARL", 10.0, **kw)["eur"] == pytest.approx(0.15 * 0.3 * 10 * 5 * 200)
+    assert cost.entry_cost("NO-GO", "L2", "BARL", 10.0, **kw)["eur"] == 0                   # light drill: not counted
+
+
+def test_12_entry_cost_missing_price_is_not_available():
+    r = cost.entry_cost("NO-GO", "L5", "XXXX", 10.0, params={"yield_t_ha": {"XXXX": 5.0}, "price_eur_t": {}})
+    assert r["eur"] == NA

@@ -7,7 +7,7 @@ import pytest
 
 plan = pytest.importorskip("engine.plan")
 RANK = {"GO": 0, "CAUTION": 1, "NO-GO": 2}
-LEVERS = {"other parcel today", "lighter load", "other day"}
+LEVERS = {"other parcel today", "lighter load", "lighter machine", "lighter machine, other parcel", "other day"}
 
 
 @pytest.mark.needs_data
@@ -17,7 +17,7 @@ def test_safer_plan_is_never_worse_than_the_input(parcel, machine, load):
     from engine.today import today
     base = today(parcel, "2016-10-13", machine, load, 1, "sowing")["status"]
     plans = plan.safer_plan(parcel, "2016-10-13", machine, load, 1)
-    assert 1 <= len(plans) <= 3
+    assert 1 <= len(plans) <= 5
     for p in plans:
         assert p["lever"] in LEVERS and RANK[p["status"]] <= RANK[base], p
         assert p["reason"] and "origin" in p["cost"]
@@ -35,6 +35,22 @@ def test_demo_other_parcel_today_is_the_sandy_parcel_go():
 def test_heavy_m3_gets_a_better_plan_even_without_any_go_today():
     plans = plan.safer_plan("PARCEL-0149869", "2016-10-13", "M3", 100, 1)    # input NO-GO
     assert plans and all(p["status"] in ("GO", "CAUTION") for p in plans)
+
+
+@pytest.mark.needs_data
+def test_spec_10_story_lighter_machine_then_sandy_parcel():
+    # M3 full on clay = NO-GO; the M2 drill makes it CAUTION; M2 on the sandy parcel is GO (recommended)
+    plans = plan.safer_plan("PARCEL-0149869", "2016-10-13", "M3", 100, 1)
+    by = {p["lever"]: p for p in plans}
+    assert by["lighter machine"]["machine_id"] == "M2" and by["lighter machine"]["status"] == "CAUTION"
+    combo = by["lighter machine, other parcel"]
+    assert combo["status"] == "GO" and combo["parcel_id"] == "PARCEL-0149906" and plans[0] is combo
+    assert isinstance(combo["cost"]["eur"], float) and combo["cost"]["eur"] >= 0       # M2 is slower than M3
+
+
+def test_lighter_machines_for_sowing():
+    assert plan.lighter_machines("M3", "sowing") == ["M2", "M1"]
+    assert plan.lighter_machines("M2", "sowing") == ["M1"]
 
 
 @pytest.mark.needs_data

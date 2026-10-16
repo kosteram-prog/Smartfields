@@ -22,12 +22,13 @@ Demo: farm **FARM-13525** (PL415, Poznań region), **replay mode**: historical A
 | `engine/soil.py` | Saxton & Rawls (2006) field capacity / wilting point; daily 0-30 cm soil-water bucket; RWC and RWC_eff | 6.3, 7.2 |
 | `engine/status.py` | Day status GO / CAUTION / NO-GO per parcel, machine load class and passes | 6.4, 7.3 |
 | `engine/season.py` | Season simulation: parcel priority, day-by-day allocation, P(finish by deadline), contractor recommendation, sensitivity | 7.4-7.6 |
-| `engine/cost.py` | Cost of delay (late-start and weather parts), contractor value, "if you wait" | 6.8, 7.5, 7.15 |
+| `engine/cost.py` | Cost of delay (late-start and weather parts), contractor value, "if you wait", "if you go now" (wet traffic, illustrative) | 6.8, 6.8.3, 7.5, 7.15 |
 | `engine/today.py` | Today: field access + operation suitability, 72-h strip, confidence | 7.7, 7.9 |
-| `engine/plan.py` | Safer plan (other parcel, lighter load, other day) | 7.8 |
+| `engine/plan.py` | Safer plan (other parcel, lighter load, lighter machine, other day), each with its cost | 7.8 |
 | `engine/records.py` | Records with conditions; BBCH estimate | 7.11-7.12 |
 | `engine/lint.py` | RecordLint R1-R6 grouped into root causes | 7.13 |
 | `engine/ncheck.py` | N-loss risk after fertilising (prototype) | 6.7, 7.10 |
+| `engine/explain.py` | Plain-language explanation: template; optional AI rewrite that cannot change values (`ANTHROPIC_API_KEY`) | 7.14 |
 | `engine/stubs.py` | Placeholder outputs for every contract function (used until a module exists) | - |
 
 ## Run it (Windows, Python 3.11+)
@@ -63,7 +64,7 @@ average, not field-level).
 
 Added on top of Marek's kickoff skeleton (do not replace his pages):
 
-- **Loss calculator** (`app/pages/6_Loss.py`) — per-farm euro impact for wet entry / delay; assumptions labelled in `engine/params.py` → `LOSS_CALC`.
+- **Loss calculator** (`app/pages/6_Loss.py`) — go now on wet soil vs wait a day, per parcel, from the engine (`entry_cost`, `wait_cost`).
 - **Satellite** (`app/pages/7_Satellite.py`) — Copernicus / Sentinel map; optional `COPERNICUS_ACCESS_TOKEN`, public EOX fallback tiles.
 - **Connect** (`app/pages/8_Connect.py`) — John Deere, CLAAS, Climate FieldView, weather stations as API connection points (no live OAuth).
 

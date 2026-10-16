@@ -91,11 +91,21 @@ def quality_label(score) -> str:
 
 
 def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, date, machine_id: str,
-           load_pct, passes, operation: str = "sowing", observation: str | None = None) -> dict:
-    """Pure Today assessment from the parcel's soil-water table and the regional weather."""
+           load_pct, passes, operation: str = "sowing", observation: str | None = None,
+           custom_machine: dict | None = None) -> dict:
+    """Pure Today assessment from the parcel's soil-water table and the regional weather.
+
+    custom_machine: {"name": str, "axle_t": max axle load in t at the current load} (spec 6.1 custom form).
+    """
     classify_day, axle_load_class, source = _status_fns()
     d = pd.Timestamp(date)
-    lc, axle = axle_load_class(machine_id, 100 if load_pct is None else load_pct)
+    if custom_machine and custom_machine.get("axle_t"):
+        from engine.status import load_class_for_axle
+        axle = float(custom_machine["axle_t"])
+        lc = load_class_for_axle(axle)
+        machine_id = custom_machine.get("name") or "custom machine"
+    else:
+        lc, axle = axle_load_class(machine_id, 100 if load_pct is None else load_pct)
     n_pass = 1 if passes is None else int(passes)
     sw = soil_water.set_index(pd.to_datetime(soil_water["date"]))
     wx = weather.set_index(pd.to_datetime(weather["date"]))
@@ -126,7 +136,7 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
                 "data_quality": NA, "based_on": [], "missing": ["Weather for this date"],
                 "best_next_check": BEST_NEXT_CHECK, "conditions": {}, "load_class": lc, "axle_load_t": axle,
                 "status_source": source, "origin": "modelled"}
-    score, based_on, missing = confidence(load_pct, passes, observation)
+    score, based_on, missing = confidence(load_pct, passes, observation, custom_machine=bool(custom_machine))
     if n_pass > 1:
         now["reasons"].append(f"{n_pass} passes on the same day: thresholds stricter by "
                               f"{abs(prm.PASSES['threshold_delta_per_extra_pass'].value) * (n_pass - 1):.2f}")
@@ -141,7 +151,7 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
                        "tmax_c": float(w.tmax_c), "wind_m_s": float(w.wind_m_s)},
         "conditions_origin": {"rwc_eff": "modelled", "weather": "real"},
         "load_class": lc, "axle_load_t": axle, "machine_id": machine_id, "parcel_id": parcel.parcel_id,
-        "load_pct": load_pct, "passes": passes,
+        "load_pct": load_pct, "passes": passes, "crop": parcel.get("crop"), "area_ha": parcel.get("area_ha"),
         "date": d, "operation": operation, "status_source": source, "origin": "modelled",
     }
 
@@ -156,7 +166,7 @@ def _farm_inputs(data_dir: str, holding_id: str, nuts3: str):
 
 
 def today(parcel_id: str, date, machine_id: str = "M2", load_pct=100, passes=1, operation: str = "sowing",
-          observation: str | None = None, holding_id: str | None = None) -> dict:
+          observation: str | None = None, holding_id: str | None = None, custom_machine: dict | None = None) -> dict:
     import config
     holding_id = holding_id or prm.DEMO["holding_id"].value
     farm, wx, sw = _farm_inputs(str(config.get_data_dir()), holding_id, prm.DEMO["nuts3"].value)
@@ -164,4 +174,4 @@ def today(parcel_id: str, date, machine_id: str = "M2", load_pct=100, passes=1, 
     if hit.empty:
         raise ValueError(f"Parcel {parcel_id} is not on holding {holding_id}")
     return assess(sw[sw.parcel_id == parcel_id], wx, hit.iloc[0], date, machine_id, load_pct, passes, operation,
-                  observation=observation)
+                  observation=observation, custom_machine=custom_machine)

@@ -34,3 +34,4 @@ Required by the hackathon T&C (11.4, 10.5). The repository contains **no organis
 | Tool | Used for |
 |---|---|
 | Claude (Anthropic), Cursor | Code generation, tests and debugging; data exploration; drafting text. All numbers in the app come from deterministic code and the parameter tables, reviewed by the team's agronomists. |
+| Claude API (optional, in the product) | Rewrites the template explanation on the Today page in plain language when `ANTHROPIC_API_KEY` is set; receives only computed values, cannot change numbers or decisions (code check), labelled 'AI-written explanation'. |

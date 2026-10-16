@@ -4,7 +4,7 @@ import streamlit as st
 
 import config
 import ui
-from components import mark_done, money_line, plan_card, zones_panel
+from components import go_now_line, mark_done, money_line, plan_card, zones_panel
 from engine import params as prm
 
 replay = ui.shell("Today")
@@ -28,8 +28,9 @@ else:
 
 
 @st.cache_data
-def assess(parcel, date, machine, load, passes, operation, observation):
-    return run_today(parcel, date, machine, load, passes, operation, **({"observation": observation} if REAL else {}))
+def assess(parcel, date, machine, load, passes, operation, observation, custom):
+    kw = {"observation": observation, "custom_machine": custom} if REAL else {}
+    return run_today(parcel, date, machine, load, passes, operation, **kw)
 
 
 farm = parcels(st.session_state["farm"])
@@ -42,10 +43,19 @@ machine = c[2].selectbox("Machine", list(prm.MACHINES), index=1,
                          format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
 load = c[3].slider("Load (%)", 0, 100, 100)
 passes = c[4].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
-observation = st.text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
-                            help="A hand test on the wettest spot raises confidence")
+c2 = st.columns([3, 2])
+observation = c2[0].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
+                               help="A hand test on the wettest spot raises confidence")
+custom = None
+with c2[1].popover("Use my own machine"):
+    use_custom = st.checkbox("Use my machine instead of the profile", key="use_custom")
+    cm_name = st.text_input("Name", "My tractor + drill", key="cm_name")
+    cm_axle = st.number_input("Max axle load at this load (t)", 0.5, 20.0, 6.0, 0.5, key="cm_axle",
+                              help="Heaviest axle with the current load (weighbridge or manufacturer data)")
+    if use_custom:
+        custom = {"name": cm_name, "axle_t": float(cm_axle)}
 
-t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None)
+t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom)
 stub = not REAL
 
 left, right = st.columns([1, 2])
@@ -57,8 +67,9 @@ with left:
         ui.status_tile("Field access", t["access"], size="1.3rem")
     with s:
         ui.status_tile("Operation suitability", t["suitability"], size="1.3rem")
-    st.caption(f"{machine} at {load}% load -> axle load {t.get('axle_load_t')} t, class {t.get('load_class')} "
-               "(default machine profile, assumption)")
+    st.caption(f"{t.get('machine_id', machine)} at {load}% load -> axle load {t.get('axle_load_t')} t, class "
+               f"{t.get('load_class')} " + ("(your machine data)" if custom else "(default machine profile, assumption)"))
+    go_now_line.render(t)
     if operation == "sowing":
         money_line.render(pd.Timestamp(replay), {"parcel_id": parcel, "machine_id": machine, "load_pct": load,
                                                  "passes": int(passes)})
@@ -104,6 +115,21 @@ with right:
         st.caption("Missing: " + "; ".join(t["missing"]))
         st.markdown(f"**Best next check:** {t['best_next_check']}")
         ui.show_origin("assumption", stub)
+
+if REAL and t["status"] in ("GO", "CAUTION", "NO-GO"):
+    with st.expander("Explain in plain words"):
+        from engine import explain
+        st.write(explain.template(t))
+        st.caption("Template explanation (deterministic).")
+        import os
+        if os.environ.get("ANTHROPIC_API_KEY"):
+            if st.button("Rewrite with AI"):
+                r = explain.ai_rewrite(t)
+                st.info(r["text"])
+                st.caption(r["label"] + (f" · {r['note']}" if r["note"] else ""))
+        else:
+            st.caption("Optional: set ANTHROPIC_API_KEY to let an AI rewrite this text. It receives only these values "
+                       "and cannot change them or the decision (checked in code).")
 
 if st.button("Find a safer plan"):
     plan_card.render(parcel, replay, machine, load, int(passes), operation)

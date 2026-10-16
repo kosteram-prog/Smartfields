@@ -79,5 +79,12 @@ def render(schedule=None, parcels=None, params=None) -> None:
             ui.show_origin(cv["origin"], False)
     else:
         st.caption("Set 'Contractor (extra ha/day)' above to see what a contractor is worth.")
+    sens = {}
+    for wgt in prm.SEASON["caution_weight_options"].value:
+        cs = _costs(p | {"caution_weight": float(wgt), "contractor_ha_day": 0.0})["cost"]["per_year"].set_index("year")
+        sens[wgt] = cs.loc[2016, "weather_default"] if 2016 in cs.index else None
+    if all(isinstance(v, float) for v in sens.values()):
+        st.caption(f"Sensitivity, 2016 weather cost: {ui.fmt_eur(sens[0.5])} if a CAUTION day counts as ½ day · "
+                   f"{ui.fmt_eur(sens[0.0])} if 0 · {ui.fmt_eur(sens[1.0])} if 1 day.")
     st.caption("Euro values use synthetic yield and price and assumed loss rates: always a range, never a precise "
                "number (the 2016 cost moves by several times across reasonable threshold assumptions).")

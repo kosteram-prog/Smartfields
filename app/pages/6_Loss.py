@@ -1,92 +1,90 @@
-"""Loss calculator page (owner: Mirela): euro impact if you enter wet / delayed fields."""
-from __future__ import annotations
+"""Loss calculator (Mirela's page, rebuilt on the engine 16 Oct): what does entering wet cost vs waiting?
 
-import datetime as dt
-
+Every number comes from the same engine as Season and Today:
+  entering now  -> engine.cost.entry_cost (spec 6.8.3, status x axle-load class, illustrative)
+  waiting a day -> engine.cost.wait_cost  (season_cost with the day skipped, replay year)
+"""
+import pandas as pd
 import streamlit as st
 
+import config
 import ui
 from engine import params as prm
-from engine import stubs
 
-ui.shell("Loss calculator")
-st.caption(
-    "Per-farm estimate for a chosen entry period. Every percentage is labelled "
-    "as an assumption — not a measured yield trial on this holding."
-)
+replay = ui.shell("Loss calculator")
+st.caption("Go now on wet soil, or wait? Both answers in euro, from the same engine as the Season and Today pages. "
+           "Euro values are illustrative: synthetic yield and price, compaction losses from one published anchor.")
+if config.data_dir_or_none() is None:
+    st.warning("FIELDGO_DATA_DIR is not set: the loss calculator needs the data extracts.")
+    st.stop()
 
-fs = stubs.farm_summary(st.session_state["farm"])
-uaa = float(fs["uaa_ha"])
-eur_ha = float(prm.LOSS_CALC["demo_output_eur_ha"].value)
-annual_output = uaa * eur_ha
+from engine import data, season, soil, status  # noqa: E402
+from engine.cost import default_economics, entry_cost, wait_cost  # noqa: E402
 
-c1, c2, c3 = st.columns(3)
-with c1:
-    ui.metric("Farm UAA", f"{uaa:.0f} ha", fs["origin"])
-with c2:
-    ui.metric("Assumed output", ui.fmt_eur(annual_output),
-              prm.LOSS_CALC["demo_output_eur_ha"].origin)
-with c3:
-    ui.metric("EUR / ha (assumption)", f"{eur_ha:,.0f}",
-              prm.LOSS_CALC["demo_output_eur_ha"].origin)
+c = st.columns(4)
+machine = c[0].selectbox("Machine", list(prm.MACHINES), index=2, format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
+load = c[1].slider("Load (%)", 0, 100, 100)
+operation = c[2].selectbox("Operation", ["sowing", "fertilising", "spraying"])
+share = c[3].slider("Trafficked share of each parcel (%)", 10, 100,
+                    int(prm.WET_TRAFFIC_LOSS["trafficked_share"].value * 100),
+                    help="Share of the field driven over by the wheels (lower with tramlines). Spec 6.8.3")
 
-st.subheader("Entry scenario")
-status = st.selectbox(
-    "Field status",
-    ["Soil too wet (compaction risk)", "Delayed field entry", "Wet soil + delay"],
-)
-share = st.slider(
-    "Share of farm entered (%)",
-    1, 100, int(prm.LOSS_CALC["default_entered_share_pct"].value),
-)
-today = st.session_state["replay_date"]
-col_a, col_b = st.columns(2)
-with col_a:
-    start = st.date_input("Period from", value=today - dt.timedelta(days=3))
-with col_b:
-    end = st.date_input("Period to", value=today)
 
-days = max(1, (end - start).days + 1)
-entered = annual_output * (share / 100.0)
-compaction_pct = float(prm.LOSS_CALC["recare_compaction_pct"].value)
-delay_pct = float(prm.LOSS_CALC["delay_pct_per_day"].value)
+@st.cache_data(show_spinner="Status of every parcel...")
+def table(holding, date, machine, load, operation, share):
+    farm = data.load_farm(holding)
+    pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
+    sw = soil.soil_water(pool, data.load_weather(pool.nuts3.iloc[0]))
+    sw = sw[sw.date == pd.Timestamp(date)]
+    lc, axle = status.axle_load_class(machine, load)
+    stt = status.status_table(sw, pool, lc, 1, operation).set_index("parcel_id")
+    econ = default_economics(holding)
+    rows = []
+    for r in pool.itertuples():
+        s_ = stt.status.get(r.parcel_id, "not available")
+        e = entry_cost(s_, lc, r.crop, r.area_ha, {"trafficked_share": share / 100.0, **econ})
+        rows.append({"parcel_id": r.parcel_id, "crop": r.crop, "area_ha": r.area_ha, "clay_pct": r.clay_pct,
+                     "status": s_, "go_now_eur": e["eur"]})
+    return pd.DataFrame(rows), lc, axle
 
-compaction = delay = 0.0
-if "wet" in status.lower() or status.startswith("Wet"):
-    compaction = entered * (compaction_pct / 100.0)
-if "delay" in status.lower() or "Delayed" in status:
-    delay = entered * (delay_pct / 100.0) * days
-total = compaction + delay
-per_ha = total / max(uaa * share / 100.0, 1e-9)
 
-st.markdown("---")
-st.metric("Estimated euro loss", ui.fmt_eur(total))
-ui.show_origin("assumption", stub=False)
-st.write(
-    f"{share}% of {fs['holding_id']} · {uaa * share / 100:.0f} ha · "
-    f"{days} day(s) ({start} → {end})"
-)
-if compaction:
-    st.write(
-        f"- Compaction scenario ({compaction_pct}% of entered output): "
-        f"**{ui.fmt_eur(compaction)}** — {prm.LOSS_CALC['recare_compaction_pct'].source}"
-    )
-if delay:
-    st.write(
-        f"- Delay scenario ({delay_pct}% × {days} d): "
-        f"**{ui.fmt_eur(delay)}** — {prm.LOSS_CALC['delay_pct_per_day'].source}"
-    )
-st.write(f"- ≈ {ui.fmt_eur(per_ha)} per hectare entered")
+t, lc, axle = table(st.session_state["farm"], pd.Timestamp(replay), machine, load, operation, share)
+num = pd.to_numeric(t.go_now_eur, errors="coerce")
+wet = t[t.status.isin(["CAUTION", "NO-GO"])]
+st.caption(f"{pd.Timestamp(replay):%d %b %Y} · {machine} at {load}% -> axle {axle} t, class {lc}")
 
-with st.expander("Assumptions (labelled)"):
-    st.markdown(
-        f"""
-- **Compaction %** = `{compaction_pct}` — origin `{prm.LOSS_CALC['recare_compaction_pct'].origin}`
-  ({prm.LOSS_CALC['recare_compaction_pct'].source}).
-- **Delay % / day** = `{delay_pct}` — origin `{prm.LOSS_CALC['delay_pct_per_day'].origin}`
-  ({prm.LOSS_CALC['delay_pct_per_day'].source}).
-- **Output base** = UAA × `{eur_ha}` EUR/ha stub assumption
-  (`LOSS_CALC.demo_output_eur_ha`) because organisers' economics are not loaded here.
-- Related shared tables (unchanged): `COST.loss_rate_pct_per_day`, `WET_TRAFFIC_LOSS`.
-"""
-    )
+k = st.columns(3)
+with k[0]:
+    ui.metric("Go now on every CAUTION / NO-GO parcel", ui.fmt_eur(float(num[wet.index].sum())), "synthetic+assumption",
+              False, help="Year-1 yield loss on the trafficked area (spec 6.8.3); part of it can last for years")
+    st.caption(f"{len(wet)} parcels, {wet.area_ha.sum():.0f} ha")
+with k[1]:
+    go = t[t.status == "GO"]
+    ui.metric("Go only where GO", ui.fmt_eur(0.0), "modelled", False)
+    st.caption(f"{len(go)} parcels, {go.area_ha.sum():.0f} ha workable today")
+with k[2]:
+    if operation == "sowing":
+        w = wait_cost(pd.Timestamp(replay), {"machine_id": machine})
+        ui.metric("Wait one day (whole farm)", ui.fmt_eur(w["eur"]), w["origin"], False,
+                  help="Season cost of delay with this day skipped minus with it used (replay year)")
+        st.caption(w.get("message") or (f"range {ui.fmt_eur(w['eur_low'])} - {ui.fmt_eur(w['eur_high'])}"
+                                        if isinstance(w.get("eur_low"), float) else ""))
+    else:
+        st.metric("Wait one day", "not available")
+        st.caption("Waiting cost is modelled for autumn sowing only.")
+
+st.subheader("Per parcel")
+st.dataframe(t.sort_values(["status", "go_now_eur"], ascending=[False, False]), hide_index=True, width="stretch",
+             column_config={"go_now_eur": st.column_config.NumberColumn("If you go now (EUR, illustrative)", format="%.0f"),
+                            "area_ha": st.column_config.NumberColumn("Area (ha)", format="%.1f"),
+                            "clay_pct": st.column_config.NumberColumn("Clay %", format="%.0f")})
+ui.show_origin("real+modelled+synthetic+assumption", False)
+with st.expander("Method and assumptions"):
+    st.markdown(f"""
+- **Status** per parcel: soil-water model + thresholds by axle-load class (spec 6.4) for this machine and load.
+- **If you go now** = loss % x trafficked share x area x expected yield x price. Loss % (year 1) by status and class:
+  NO-GO L3 5 %, L4 10 %, L5 15 %; CAUTION half of that; L1-L2 not counted. Anchor: Håkansson multi-site study
+  (10-12 t axle load ~15 % year-1 loss; 3-5 % subsoil losses for 12 years); L3/L4 values are interpolated.
+- **Wait one day** = season cost of delay (loss 1 %/day after the optimal sowing date, IUNG) with the day skipped.
+- Yield and price: synthetic farm data (mean 2017-2024; Jul-Aug price). They do not react to weather.
+""")

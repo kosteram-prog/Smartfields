@@ -99,3 +99,12 @@ def test_real_demo_cases(parcel, machine, day, expected):
 def test_real_unknown_parcel_raises():
     with pytest.raises(ValueError):
         td.today("PARCEL-9999999", "2016-10-13", "M2", 100, 1, "sowing")
+
+
+def test_custom_machine_uses_its_axle_load_and_raises_confidence():
+    sw, wx = inputs()
+    base = td.assess(sw, wx, PARCEL, "2016-10-13", "M2", 100, 1, "sowing")
+    r = td.assess(sw, wx, PARCEL, "2016-10-13", "M2", 100, 1, "sowing",
+                  custom_machine={"name": "My JD 6R + 4 m drill", "axle_t": 9.0})
+    assert r["load_class"] == "L4" and r["axle_load_t"] == 9.0
+    assert r["confidence"] == base["confidence"] + 10

@@ -14,6 +14,7 @@ weather part = total - late start (the headline, D14). Missing yield, price or o
   contractor_value(cost_without, cost_with, contractor_ha, contractor_price) -> value and net benefit
   wait_cost(date, params)                      -> EUR if you wait one day (replay year only), days to first GO
   season_costs(params)                         -> convenience for the UI: season + costs + contractor value
+  entry_cost(status, load_class, crop, area_ha, params) -> "If you go now": illustrative year-1 loss from wet traffic
 """
 from __future__ import annotations
 
@@ -241,3 +242,35 @@ def season_costs(params: dict | None = None) -> dict:
                                                                       prm.COST["contractor_price_eur_ha"].value))
         out["contractor_ha_day"] = extra
     return out
+
+
+def entry_cost(status: str, load_class: str, crop: str, area_ha: float, params: dict | None = None) -> dict:
+    """Spec 6.8.3 (Add-on 3): year-1 yield loss on the trafficked area when the farmer goes although status != GO.
+
+    eur = loss % (status, load class) x trafficked share x area x expected yield x price. Illustrative: needs
+    calibration; part of the damage (subsoil) can last for years.
+    """
+    p = params or {}
+    out = {"status": status, "load_class": load_class, "unit": "EUR", "label": "illustrative, needs calibration",
+           "origin": "synthetic+assumption",
+           "note": "Year 1 only; part of the damage can last for years (subsoil compaction)."}
+    if status == "GO":
+        return out | {"eur": 0.0, "loss_pct": 0.0, "message": "EUR 0 expected: soil can carry this load today."}
+    if status not in prm.WET_TRAFFIC_LOSS or load_class not in prm.WET_TRAFFIC_LOSS[status]:
+        return out | {"eur": NA, "loss_pct": NA}
+    pct = prm.WET_TRAFFIC_LOSS[status][load_class].value
+    share = p.get("trafficked_share", prm.WET_TRAFFIC_LOSS["trafficked_share"].value)
+    yld = (p.get("yield_t_ha") or {}).get(crop)
+    prc = (p.get("price_eur_t") or {}).get(crop)
+    if yld is None or prc is None:
+        try:
+            econ = default_economics(p.get("holding_id"))
+            yld = econ["yield_t_ha"].get(crop) if yld is None else yld
+            prc = econ["price_eur_t"].get(crop) if prc is None else prc
+        except Exception:
+            pass
+    if not (_num(yld) and _num(prc) and _num(area_ha)):
+        return out | {"eur": NA, "loss_pct": pct, "trafficked_share": share}
+    eur = pct / 100.0 * share * float(area_ha) * float(yld) * float(prc)
+    return out | {"eur": round(eur, 0), "loss_pct": pct, "trafficked_share": share,
+                  "trafficked_ha": round(share * float(area_ha), 2), "yield_t_ha": yld, "price_eur_t": prc}

@@ -48,6 +48,8 @@ md = lambda d: d.strftime("%m-%d")  # noqa: E731
 params = {"window_start": md(start), "deadline": md(deadline), "machine_id": machine, "units": int(units),
           "hours": float(hours), "contractor_ha_day": float(contractor), "contractor_start": md(c_start),
           "caution_weight": float(caution)}
+if st.session_state.get("parcel_order"):
+    params["parcel_order"] = tuple(st.session_state["parcel_order"])
 res = simulate(params)
 stub = not REAL
 if res.get("message"):
@@ -146,6 +148,20 @@ if isinstance(wd, pd.DataFrame) and not wd.empty:
 # ------------------------------------------------------------------ parcel order
 st.subheader("Parcel order")
 order = pd.DataFrame(res["parcel_order"])
+if REAL and not order.empty:
+    with st.expander("Change the order (your own priorities)"):
+        st.caption("Edit the rank numbers and press Apply; the season is re-simulated with your order.")
+        ed = st.data_editor(order[["rank", "parcel_id", "crop", "area_ha", "clay_pct"]], hide_index=True,
+                            disabled=["parcel_id", "crop", "area_ha", "clay_pct"], key="order_editor")
+        b1, b2 = st.columns(2)
+        if b1.button("Apply my order"):
+            st.session_state["parcel_order"] = list(ed.sort_values("rank").parcel_id)
+            st.rerun()
+        if b2.button("Back to the default priority"):
+            st.session_state.pop("parcel_order", None)
+            st.rerun()
+    if st.session_state.get("parcel_order"):
+        st.info("Using your own parcel order (spec 7.6 default replaced).")
 if not order.empty:
     cols = [c for c in ["rank", "parcel_id", "crop", "area_ha", "clay_pct", "priority", "median_done",
                         "share_years_late", "reason"] if c in order.columns]

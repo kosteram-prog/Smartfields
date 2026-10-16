@@ -43,6 +43,15 @@ def axle_load_class(machine_id: str, load_pct: float) -> tuple[str, float]:
     return "L5", round(axle, 2)
 
 
+def load_class_for_axle(axle_t: float) -> str:
+    """Load class from a max axle load in t (spec 6.1 bounds, upper bound inclusive)."""
+    for cls, p in prm.LOAD_CLASS_BOUNDS.items():
+        lo, hi = p.value
+        if axle_t <= hi:
+            return cls
+    return "L5"
+
+
 def _thresholds(load_class, clay, sand, passes):
     t = prm.THRESHOLDS[load_class]
     ta = prm.TEXTURE_ADJUSTMENT

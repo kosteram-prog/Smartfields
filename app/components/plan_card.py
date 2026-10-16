@@ -27,7 +27,8 @@ def render(parcel_id, date, machine_id, load_pct, passes, operation="sowing") ->
     for col, p in zip(cols, plans):
         with col, st.container(border=True):
             st.markdown(("⭐ **Recommended** · " if p.get("recommended") else "") + f"**{p['lever'].capitalize()}**")
-            ui.status_tile(f"{p['parcel_id']} · {pd.Timestamp(p['date']):%d %b} · {p['load_pct']}% load", p["status"],
+            ui.status_tile(f"{p.get('machine_id', '')} · {p['parcel_id']} · {pd.Timestamp(p['date']):%d %b} · "
+                           f"{p['load_pct']}% load", p["status"],
                            size="1.4rem")
             st.write(p["reason"])
             alts = p.get("alternatives") or []

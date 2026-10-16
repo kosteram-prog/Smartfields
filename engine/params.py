@@ -185,9 +185,12 @@ COST = {
     "headline": P("weather", "", "agreed defaults: weather part is the headline, late-start shown separately"),
 }
 # 6.8.3 stretch (Add-on 3, not built by default)
+_WTL = "spec 6.8.3: L5 anchor Hakansson multi-site (10-12 t axle ~15% year-1 loss); L3/L4 and CAUTION x0.5 interpolated, illustrative"
 WET_TRAFFIC_LOSS = {
-    "NO-GO": {"L1": P(0, "%"), "L2": P(0, "%"), "L3": P(5, "%"), "L4": P(10, "%"), "L5": P(15, "%")},
-    "CAUTION": {"L1": P(0, "%"), "L2": P(0, "%"), "L3": P(2.5, "%"), "L4": P(5, "%"), "L5": P(7.5, "%")},
+    "NO-GO": {"L1": P(0, "%", _WTL), "L2": P(0, "%", _WTL), "L3": P(5, "%", _WTL), "L4": P(10, "%", _WTL),
+              "L5": P(15, "%", _WTL)},
+    "CAUTION": {"L1": P(0, "%", _WTL), "L2": P(0, "%", _WTL), "L3": P(2.5, "%", _WTL), "L4": P(5, "%", _WTL),
+                "L5": P(7.5, "%", _WTL)},
     "trafficked_share": P(0.30, "share", "spec 6.8.3, editable"),
 }
 

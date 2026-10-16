@@ -249,6 +249,11 @@ def season_from_inputs(parcels: pd.DataFrame, status: pd.DataFrame, params: dict
 
     # parcel order table with median completion and share of late years
     pr = priority(sel)
+    if p["parcel_order"]:
+        custom = [x for x in p["parcel_order"] if x in set(pr.parcel_id)]
+        pr = pr.set_index("parcel_id").loc[custom + [x for x in pr.parcel_id if x not in set(custom)]].reset_index()
+        pr["rank"] = range(1, len(pr) + 1)
+        pr["reason"] = "your order"
     late, med = [], []
     for pid in pr.parcel_id:
         cds = sched[sched.parcel_id == pid].groupby("year").completion_date.first().reindex(comp.year)

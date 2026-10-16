@@ -186,3 +186,10 @@ def test_real_three_workable_days_early_october_2016(real):
     oct16 = wd[(wd.date >= "2016-10-01") & (wd.date <= "2016-10-21")]
     assert (oct16.share_go_parcels >= 0.5).sum() == 3      # pre-event number (counted by parcels)
     assert (oct16.share_go >= 0.5).sum() in (2, 3)         # by area 14 Oct is 46%: borderline
+
+
+def test_custom_parcel_order_is_followed():
+    p = farm()
+    sched, _ = season.simulate(statuses(p), p, own_ha_day=4.0, years=[2016], order=["B", "A"])
+    first = sched.sort_values("date").groupby("parcel_id").completion_date.first()
+    assert first["B"] < first["A"]
