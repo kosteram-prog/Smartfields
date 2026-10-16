@@ -19,6 +19,7 @@ from pathlib import Path
 import pandas as pd
 
 import config
+from engine import soil
 
 # What to extract (data selection, not agronomy). Spec 7.1.
 WEATHER_NUTS3 = ("PL415", "PL418", "RO317")           # PL418 = Gasawy field, RO317 = Romanian field
@@ -155,7 +156,8 @@ def load_weather(nuts3: str = "PL415") -> pd.DataFrame:
 def load_farm(holding_id: str = "FARM-13525") -> pd.DataFrame:
     """Parcels of one holding with parcel soil (origin: synthetic).
 
-    fc_mm / wp_mm / priority are 'not available' (NaN, never 0) here: engine.soil and engine.season fill them.
+    fc_mm / wp_mm come from Saxton-Rawls (engine.soil, 0-30 cm); priority is 'not available' (NaN, never 0)
+    until engine.season fills it.
     """
     p = _table("parcels")
     p = p[p.holding_id == holding_id]
@@ -167,6 +169,7 @@ def load_farm(holding_id: str = "FARM-13525") -> pd.DataFrame:
         "silt_pct": p.silt_pct, "om_pct": p.organic_matter_pct, "bulk_density_kg_dm3": p.bulk_density_kg_dm3,
         "fc_mm": float("nan"), "wp_mm": float("nan"), "priority": float("nan"),
         "nuts3": p.nuts3, "organic": p.organic, "origin": "synthetic"})
+    out = soil.add_hydraulics(out)
     return out.sort_values("parcel_id").reset_index(drop=True)
 
 
