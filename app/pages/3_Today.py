@@ -60,6 +60,24 @@ with left:
     st.caption(f"{machine} at {load}% load -> axle load {t.get('axle_load_t')} t, class {t.get('load_class')} "
                "(default machine profile, assumption)")
     money_line.render(replay)
+    if operation == "fertilising":
+        with st.container(border=True):
+            n_rate = st.number_input("N in this application (kg N/ha)", min_value=0.0, value=None, step=10.0,
+                                     placeholder="enter the N rate")
+            if not REAL:
+                st.caption("N check needs FIELDGO_DATA_DIR (real weather).")
+            elif n_rate is None:
+                st.caption("Enter the N rate to see the N-loss risk.")
+            else:
+                from engine.ncheck import n_check
+                nc = n_check(pd.Timestamp(replay), n_rate, data.load_weather(prm.DEMO["nuts3"].value))
+                colour = {"high": "NO-GO", "prohibited": "NO-GO", "medium": "CAUTION", "low": "GO"}.get(nc["risk"], "not available")
+                ui.status_tile("N loss risk (prototype)", nc["risk"].upper(), size="1.4rem", color_as=colour)
+                st.write(nc["reason"])
+                if isinstance(nc["n_at_risk_kg_ha"], tuple):
+                    lo, hi = nc["n_at_risk_kg_ha"]
+                    st.markdown(f"Indicative N at risk: **{lo:.0f}-{hi:.0f} kg N/ha** (range, prototype)")
+                ui.show_origin(nc["origin"], False)
 with right:
     st.markdown("**Next 72 hours** (replay: historical weather plays the forecast)")
     cols = st.columns(3)

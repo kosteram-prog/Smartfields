@@ -38,8 +38,9 @@ def metric(label: str, value, origin: str, stub: bool = True, help: str | None =
     show_origin(origin, stub)
 
 
-def status_tile(label: str, status: str, size: str = "2.4rem") -> None:
-    color = STATUS_COLORS.get(status, STATUS_COLORS["not available"])
+def status_tile(label: str, status: str, size: str = "2.4rem", color_as: str | None = None) -> None:
+    """Coloured tile; color_as lets another word (e.g. 'HIGH') use a status colour ('NO-GO')."""
+    color = STATUS_COLORS.get(color_as or status, STATUS_COLORS["not available"])
     st.markdown(
         f"<div style='background:{color};color:white;border-radius:12px;padding:14px 18px;text-align:center'>"
         f"<div style='font-size:0.9rem;opacity:0.9'>{label}</div>"
