@@ -1,10 +1,11 @@
-"""Farm page (owner: Mirela): headline numbers and parcel tiles (not a map)."""
+"""Farm page (owner: Mirela): headline numbers, trafficability map, parcel tiles."""
 import streamlit as st
 
 import ui
+from components import farm_map
 from engine import stubs  # TODO: engine.data.load_farm
 
-ui.shell("Farm")
+replay = ui.shell("Farm")
 fs = stubs.farm_summary(st.session_state["farm"])
 c = st.columns(5)
 for col, (label, val) in zip(c, [("Parcels", fs["parcels"]), ("UAA (ha)", fs["uaa_ha"]),
@@ -15,8 +16,10 @@ for col, (label, val) in zip(c, [("Parcels", fs["parcels"]), ("UAA (ha)", fs["ua
         ui.metric(label, val, fs["origin"])
 st.caption(f"{fs['holding_id']} · {fs['nuts3']} (Poznan region) · {fs['awu']} AWU · not organic")
 
-st.subheader("Winter-cereal parcels (stub shows 6 of 21)")
 farm = stubs.load_farm(fs["holding_id"])
+farm_map.render(farm, replay)
+
+st.subheader("Winter-cereal parcels (stub shows 6 of 21)")
 cols = st.columns(3)
 for i, r in enumerate(farm.itertuples()):
     with cols[i % 3], st.container(border=True):
