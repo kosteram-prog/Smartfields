@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fieldgo"
+version = "0.1.0"
+description = "FieldGo - EU Agri-Hackathon 2026, Challenge #2"
+requires-python = ">=3.11"
+
+[tool.setuptools]
+packages = ["engine"]
+py-modules = ["config"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["needs_data: test needs the organisers' data (FIELDGO_DATA_DIR)"]
