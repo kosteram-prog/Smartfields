@@ -8,6 +8,7 @@ Required by the hackathon T&C (11.4, 10.5). The repository contains **no organis
 | AgERA5 (Copernicus Climate Change Service) | Daily weather 2015-2024, PL415, PL418, RO317 | Copernicus licence (free use with attribution) | Contains modified Copernicus Climate Change Service information [2026] |
 | Sentinel-1 (Copernicus Data Space Ecosystem) | Pre-rendered field-zone picture of the demo field (if shown) | Copernicus free, full and open data policy | Contains modified Copernicus Sentinel data [2016] |
 | GUGiK ULDK | Boundary of the real demo field (if shown) | Public service, open data | Parcel boundary: GUGiK, ULDK |
+| Sentinel-2 cloudless mosaic by EOX (s2maps.eu), map tiles in the Satellite page and the HTML prototype | Background satellite map | CC BY-NC-SA 4.0 for the 2018+ mosaics (verify the year used): attribution, non-commercial | Sentinel-2 cloudless - https://s2maps.eu by EOX IT Services GmbH (Contains modified Copernicus Sentinel data) |
 
 ## Software
 | Library | Licence |
@@ -18,6 +19,7 @@ Required by the hackathon T&C (11.4, 10.5). The repository contains **no organis
 | NumPy | BSD-3-Clause |
 | PyArrow | Apache-2.0 |
 | Plotly | MIT |
+| Leaflet 1.9.4 (HTML prototype, Satellite page; loaded from unpkg) | BSD-2-Clause |
 | pytest (development) | MIT |
 
 ## Methods and parameter sources
