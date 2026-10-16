@@ -20,14 +20,31 @@ YEARS = list(prm.SEASON["years"].value)
 _DEMO_DATE = dt.date(2016, 10, 13)
 
 # ----------------------------------------------------------------------------- farm / data
+# 21 winter-cereal parcels (matches Farm map GeoJSON). Demo Today cases keep their soils.
+# Clay/sand + day-13 RWC_eff are varied so classify_day yields a GO/CAUTION/NO-GO mix on the map.
 _PARCELS = [
     # parcel_id, crop, area_ha, clay, sand, om, fc_mm, wp_mm
-    ("PARCEL-0149869", "BARL", 7.61, 54.8, 15.0, 2.5, 131, 96),
-    ("PARCEL-0149906", "BARL", 6.34, 8.0, 77.6, 1.5, 38, 18),
-    ("PARCEL-0149917", "BARL", 8.20, 39.2, 25.0, 2.2, 118, 80),
-    ("PARCEL-STUB-04", "COWT", 9.10, 22.0, 40.0, 2.0, 95, 55),
-    ("PARCEL-STUB-05", "COWT", 5.40, 31.0, 35.0, 2.4, 108, 66),
-    ("PARCEL-STUB-06", "BARL", 7.80, 18.0, 52.0, 1.8, 80, 42),
+    ("PARCEL-0149869", "BARL", 7.61, 54.8, 15.0, 2.5, 131, 96),   # CAUTION (demo)
+    ("PARCEL-0149906", "BARL", 6.34, 8.0, 77.6, 1.5, 38, 18),    # GO (demo)
+    ("PARCEL-0149917", "BARL", 8.20, 39.2, 25.0, 2.2, 118, 80),  # CAUTION
+    ("PARCEL-STUB-04", "COWT", 12.1, 12.0, 72.0, 1.6, 55, 22),   # GO sandy
+    ("PARCEL-STUB-05", "COWT", 4.94, 18.0, 55.0, 1.8, 75, 35),   # GO
+    ("PARCEL-STUB-06", "BARL", 9.20, 14.0, 68.0, 1.7, 60, 28),   # GO
+    ("PARCEL-STUB-07", "BARL", 6.38, 16.0, 60.0, 1.9, 70, 32),   # GO
+    ("PARCEL-STUB-08", "BARL", 7.66, 10.0, 75.0, 1.5, 48, 20),   # GO
+    ("PARCEL-STUB-09", "COWT", 10.0, 28.0, 40.0, 2.1, 100, 58),  # CAUTION
+    ("PARCEL-STUB-10", "BARL", 3.83, 35.0, 30.0, 2.3, 110, 70),  # CAUTION clay
+    ("PARCEL-STUB-11", "COWT", 12.4, 25.0, 45.0, 2.0, 95, 52),   # CAUTION
+    ("PARCEL-STUB-12", "BARL", 16.2, 32.0, 28.0, 2.4, 112, 68),  # CAUTION
+    ("PARCEL-STUB-13", "BARL", 4.81, 22.0, 48.0, 2.0, 88, 45),   # CAUTION
+    ("PARCEL-STUB-14", "COWT", 3.90, 40.0, 22.0, 2.5, 120, 82),  # CAUTION heavy
+    ("PARCEL-STUB-15", "BARL", 6.46, 48.0, 18.0, 2.6, 128, 90),  # NO-GO wet clay
+    ("PARCEL-STUB-16", "BARL", 3.17, 42.0, 20.0, 2.4, 122, 85),  # NO-GO
+    ("PARCEL-STUB-17", "COWT", 5.74, 55.0, 12.0, 2.7, 135, 98),  # NO-GO
+    ("PARCEL-STUB-18", "BARL", 10.7, 45.0, 16.0, 2.5, 125, 88),  # NO-GO
+    ("PARCEL-STUB-19", "COWT", 4.82, 38.0, 25.0, 2.3, 115, 75),  # NO-GO
+    ("PARCEL-STUB-20", "BARL", 5.35, 50.0, 14.0, 2.6, 130, 95),  # NO-GO
+    ("PARCEL-STUB-21", "BARL", 17.7, 44.0, 18.0, 2.5, 124, 86),  # NO-GO
 ]
 
 
@@ -59,11 +76,40 @@ def load_weather(nuts3: str = "PL415") -> pd.DataFrame:
         "tmin_c": 5.0, "tmean_c": 9.0, "tmax_c": 13.0, "wind_m_s": 3.0, "origin": "real"})
 
 
+# Day-13 RWC_eff for the Farm map mix (and Today demos). Other days keep the seasonal default.
+_RWC_DAY13 = {
+    "PARCEL-0149869": 1.00,   # CAUTION (demo M2)
+    "PARCEL-0149906": 0.98,   # GO (demo M2; sand adj)
+    "PARCEL-0149917": 0.97,   # CAUTION
+    "PARCEL-STUB-04": 0.82,   # GO
+    "PARCEL-STUB-05": 0.86,   # GO
+    "PARCEL-STUB-06": 0.88,   # GO
+    "PARCEL-STUB-07": 0.90,   # GO
+    "PARCEL-STUB-08": 0.84,   # GO
+    "PARCEL-STUB-09": 0.98,   # CAUTION
+    "PARCEL-STUB-10": 0.96,   # CAUTION (clay adj)
+    "PARCEL-STUB-11": 1.00,   # CAUTION
+    "PARCEL-STUB-12": 0.97,   # CAUTION
+    "PARCEL-STUB-13": 0.99,   # CAUTION
+    "PARCEL-STUB-14": 0.98,   # CAUTION (clay adj → go 0.90 / caut 1.00)
+    "PARCEL-STUB-15": 1.08,   # NO-GO
+    "PARCEL-STUB-16": 1.10,   # NO-GO
+    "PARCEL-STUB-17": 1.12,   # NO-GO
+    "PARCEL-STUB-18": 1.09,   # NO-GO
+    "PARCEL-STUB-19": 1.07,   # NO-GO
+    "PARCEL-STUB-20": 1.11,   # NO-GO
+    "PARCEL-STUB-21": 1.08,   # NO-GO
+}
+
+
 def _rwc_eff(parcel_id: str, d: dt.date) -> float:
-    key = {"PARCEL-0149869": {13: 1.00, 14: 0.94, 15: 0.90},
-           "PARCEL-0149906": {13: 0.98, 14: 0.96, 15: 0.93}}.get(parcel_id, {})
-    if d.day in key:
-        return key[d.day]
+    # Preserve 72-h strip drying for the two Today demo parcels.
+    demo = {"PARCEL-0149869": {13: 1.00, 14: 0.94, 15: 0.90},
+            "PARCEL-0149906": {13: 0.98, 14: 0.96, 15: 0.93}}.get(parcel_id, {})
+    if d.day in demo:
+        return demo[d.day]
+    if d.day == 13 and parcel_id in _RWC_DAY13:
+        return _RWC_DAY13[parcel_id]
     return 1.04 if d.day <= 12 else 0.97
 
 

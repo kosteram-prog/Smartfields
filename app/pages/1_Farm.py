@@ -19,7 +19,7 @@ st.caption(f"{fs['holding_id']} · {fs['nuts3']} (Poznan region) · {fs['awu']} 
 farm = stubs.load_farm(fs["holding_id"])
 farm_map.render(farm, replay)
 
-st.subheader("Winter-cereal parcels (stub shows 6 of 21)")
+st.subheader(f"Winter-cereal parcels ({len(farm)} on map)")
 cols = st.columns(3)
 for i, r in enumerate(farm.itertuples()):
     with cols[i % 3], st.container(border=True):

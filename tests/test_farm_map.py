@@ -14,16 +14,22 @@ def test_trafficability_table_stub_demo_date():
     farm = stubs.load_farm()
     out = farm_map.trafficability_table(farm, dt.date(2016, 10, 13))
     assert set(out.parcel_id) == set(farm.parcel_id)
+    assert len(farm) >= 20
     assert set(out.status).issubset({"GO", "CAUTION", "NO-GO", "not available"})
+    # Meaningful mix of all three access colours on the Farm map
+    counts = out.status.value_counts()
+    for s in ("GO", "CAUTION", "NO-GO"):
+        assert counts.get(s, 0) >= 5, counts.to_dict()
     assert out.loc[out.parcel_id == "PARCEL-0149906", "status"].item() == "GO"
     assert out.loc[out.parcel_id == "PARCEL-0149869", "status"].item() == "CAUTION"
 
 
 def test_bundled_osm_rings_rural_and_closed():
+    farm_map._bundled_rings.cache_clear()
     farm = stubs.load_farm()
     rings, source = farm_map.parcel_rings(farm)
     assert "OSM" in source or "shape_wkt" in source
-    assert len(rings) == len(farm)
+    assert len(rings) == len(farm) >= 20
     for ring in rings.values():
         assert len(ring) >= 4
         assert ring[0] == ring[-1]
