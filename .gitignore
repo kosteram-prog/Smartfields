@@ -1,0 +1,11 @@
+data/
+extracts/
+*.csv
+*.parquet
+*.zip
+*.tif
+*.tiff
+.env
+secrets/
+__pycache__/
+.venv/
