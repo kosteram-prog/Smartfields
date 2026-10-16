@@ -141,6 +141,7 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
                        "tmax_c": float(w.tmax_c), "wind_m_s": float(w.wind_m_s)},
         "conditions_origin": {"rwc_eff": "modelled", "weather": "real"},
         "load_class": lc, "axle_load_t": axle, "machine_id": machine_id, "parcel_id": parcel.parcel_id,
+        "load_pct": load_pct, "passes": passes,
         "date": d, "operation": operation, "status_source": source, "origin": "modelled",
     }
 

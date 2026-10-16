@@ -270,3 +270,7 @@ INTEGRATIONS = {
         ],
         "", "UI connection points only — no live vendor login in this prototype"),
 }
+
+# ---------------------------------------------------------------- PROPOSED: EPPO crop codes for records (spec 6.5, 7.11)
+EPPO_CODES = P({"COWT": "TRZAW", "BARL": "HORVW", "RAPE": "BRSNW", "MAIZ": "ZEAMX", "SUNF": "HELAN",
+                "HAY": "POAPR", "OLIV": "OLVEU"}, "", "EPPO Global Database: verify each code before submission")

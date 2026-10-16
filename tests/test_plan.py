@@ -25,9 +25,16 @@ def test_safer_plan_is_never_worse_than_the_input(parcel, machine, load):
 
 @pytest.mark.needs_data
 def test_demo_other_parcel_today_is_the_sandy_parcel_go():
-    plans = {p["lever"]: p for p in plan.safer_plan("PARCEL-0149869", "2016-10-13", "M3", 100, 1)}
+    # spec 10: clay parcel with the M2 drill is CAUTION; the sandy parcel 0149906 with M2 is GO
+    plans = {p["lever"]: p for p in plan.safer_plan("PARCEL-0149869", "2016-10-13", "M2", 100, 1)}
     other = plans["other parcel today"]
-    assert other["status"] == "GO" and other["parcel_id"] != "PARCEL-0149869"
+    assert other["status"] == "GO" and other["parcel_id"] == "PARCEL-0149906"
+
+
+@pytest.mark.needs_data
+def test_heavy_m3_gets_a_better_plan_even_without_any_go_today():
+    plans = plan.safer_plan("PARCEL-0149869", "2016-10-13", "M3", 100, 1)    # input NO-GO
+    assert plans and all(p["status"] in ("GO", "CAUTION") for p in plans)
 
 
 @pytest.mark.needs_data
