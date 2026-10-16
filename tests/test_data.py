@@ -138,12 +138,13 @@ def test_load_weather_contract(extracted):
         data.load_weather("XX999")
 
 
-def test_load_farm_contract_and_not_available_is_nan_not_zero(extracted):
+def test_load_farm_contract_and_hydraulics(extracted):
     farm = data.load_farm(DEMO)
     for col in ["parcel_id", "crop", "area_ha", "clay_pct", "sand_pct", "om_pct", "fc_mm", "wp_mm", "priority", "origin"]:
         assert col in farm.columns, col
     assert len(farm) == 2 and (farm.origin == "synthetic").all()
-    assert farm.fc_mm.isna().all() and farm.wp_mm.isna().all()   # filled by engine.soil (Task 1)
+    assert (farm.fc_mm > farm.wp_mm).all() and (farm.wp_mm > 0).all()   # Saxton-Rawls, 0-30 cm
+    assert farm.priority.isna().all()                                    # not available until engine.season
     assert farm.set_index("parcel_id").loc["PARCEL-0149906", "sand_pct"] == 77.6
     with pytest.raises(ValueError):
         data.load_farm("FARM-99999")
