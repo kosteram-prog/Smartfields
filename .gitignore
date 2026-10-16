@@ -9,3 +9,5 @@ extracts/
 secrets/
 __pycache__/
 .venv/
+*.egg-info/
+.pytest_cache/

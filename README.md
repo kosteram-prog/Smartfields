@@ -1,39 +1,63 @@
 # FieldGo
 
-One Streamlit app for an arable farmer (EU Agri-Hackathon 2026, Challenge #2):
-- **Season** - will I finish autumn sowing by my deadline, do I need a contractor, what does delay cost?
-- **Today** - can I go on this parcel today with this machine and load, what is the safer alternative, what does waiting cost?
-- **Records** - "mark as done" stores the conditions; a checker groups errors in past records into root causes.
+**Plan the season. Decide today. Keep clean records.**
+A decision aid for arable farmers, built during the EU Agri-Hackathon 2026 (Challenge #2 "Connect Data for Smarter Fields").
 
-Demo farm FARM-13525 (PL415), replay mode: historical AgERA5 weather plays the role of the forecast.
-The engine is deterministic; the UI only calls engine functions. Every number carries an origin label
-(`real`, `modelled`, `synthetic`, `assumption`). All parameters live in `engine/params.py`.
+| Page | Question it answers |
+|---|---|
+| **Season** | Will I finish autumn sowing by my deadline? Do I need a contractor? What does a delay cost? (10 real autumns, AgERA5 2015-2024) |
+| **Today** | Can I go on this parcel today with this machine and load? What is the next 72 h? What is the N-loss risk of fertilising now? |
+| **Records** | "Mark as done" stores the conditions; *Record check* groups errors in past records into a few root causes |
 
-**Status: walking skeleton.** The pages show stub numbers (`engine/stubs.py`, red "stub" badges); real engine modules replace them one by one.
+Demo: farm **FARM-13525** (PL415, Poznań region), **replay mode**: historical AgERA5 weather plays the role of the forecast.
 
-## Setup (Windows, Python 3.11+)
-```
+## How it works
+- **Deterministic engine** (`engine/`): plain functions, inputs -> DataFrame or dict. The UI (`app/`) never computes agronomy.
+- **Every number carries its origin**: `real` (AgERA5 weather), `modelled` (our engine), `synthetic` (organisers' farm data), `assumption` (parameter tables). The app shows it next to each number.
+- **All parameters live in `engine/params.py`**, each with value, unit, origin and source. Missing inputs show "not available", never 0.
+
+| Module | What it does | Spec |
+|---|---|---|
+| `engine/data.py` | Extracts the needed rows from the organisers' zip into small Parquet files; cached loaders | 7.1 |
+| `engine/soil.py` | Saxton & Rawls (2006) field capacity / wilting point; daily 0-30 cm soil-water bucket; RWC and RWC_eff | 6.3, 7.2 |
+| `engine/status.py` | Day status GO / CAUTION / NO-GO per parcel, machine load class and passes | 6.4, 7.3 |
+| `engine/season.py` | Season simulation: parcel priority, day-by-day allocation, P(finish by deadline), contractor recommendation, sensitivity | 7.4-7.6 |
+| `engine/cost.py` | Cost of delay (late-start and weather parts), contractor value, "if you wait" | 6.8, 7.5, 7.15 |
+| `engine/today.py` | Today: field access + operation suitability, 72-h strip, confidence | 7.7, 7.9 |
+| `engine/plan.py` | Safer plan (other parcel, lighter load, other day) | 7.8 |
+| `engine/records.py` | Records with conditions; BBCH estimate | 7.11-7.12 |
+| `engine/lint.py` | RecordLint R1-R6 grouped into root causes | 7.13 |
+| `engine/ncheck.py` | N-loss risk after fertilising (prototype) | 6.7, 7.10 |
+| `engine/stubs.py` | Placeholder outputs for every contract function (used until a module exists) | - |
+
+## Run it (Windows, Python 3.11+)
+```powershell
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-pip install -e .          # makes `engine` and `config` importable from anywhere
+pip install -e .                                   # makes engine/ and config importable
+
+# data: NOT in this repository (organisers' terms). Extract once into a folder outside the repo:
+$env:FIELDGO_DATA_DIR = "C:\path\to\extracts"     # must exist
+python -m engine.data --zip "C:\path\to\all-datasets.zip" --out $env:FIELDGO_DATA_DIR   # ~2 min, < 1 GB RAM
+
+streamlit run app/main.py                          # from the repository root
+pytest                                             # data-dependent tests are skipped without FIELDGO_DATA_DIR
 ```
+Without `FIELDGO_DATA_DIR` the app still opens and shows stub numbers (red "stub" badge).
 
 ## Data
-The organisers' dataset is **not included and must not be committed** (see `.gitignore`). Build the Parquet extracts
-outside the repo and point the app at them:
-```
-$env:FIELDGO_DATA_DIR = "E:\fieldgo-data"      # PowerShell; folder must exist
-python -m engine.data --zip "<path to all-datasets.zip>" --out $env:FIELDGO_DATA_DIR
-```
-The skeleton runs without `FIELDGO_DATA_DIR` (stubs only).
+The EU Agri-Hackathon 2026 dataset (DG AGRI) is **not included and must not be committed** (`.gitignore` blocks
+`*.csv`, `*.parquet`, `*.zip`, `*.tif`). The extraction keeps: AgERA5 daily weather 2015-2024 for PL415, PL418, RO317;
+holdings, parcels and parcel soil for FARM-13525 and the organic example FARM-16285; their operations 2017-2026;
+market prices; labour. Farm, parcel and operation data are **synthetic**; weather is **real** (reanalysis, regional
+average, not field-level).
 
-## Run
-```
-streamlit run app/main.py      # from the repo root
-pytest                         # data-dependent tests are skipped when FIELDGO_DATA_DIR is not set
-```
+## Limits (say them out loud)
+- Thresholds, machine profiles and loss rates are prototype assumptions from published sources, not calibrated field
+  rules. They are editable and shown with their source.
+- Weather is a regional average; soil is synthetic per parcel; the soil-water model is a simple 0-30 cm bucket.
+- Synthetic yields and prices do not react to weather, so euro values are illustrative and always shown as a range.
 
-## Layout
-`engine/` pure functions (contract in the build spec), `app/` Streamlit pages and `components/`, `tests/` pytest.
-File ownership: see the kickoff prompt (section 3).
+## Licence and credits
+Code: MIT (see `LICENSE` once added). Data sources, libraries, methods and AI tools: see [CREDITS.md](CREDITS.md).
