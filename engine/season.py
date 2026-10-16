@@ -235,8 +235,10 @@ def season_from_inputs(parcels: pd.DataFrame, status: pd.DataFrame, params: dict
             p_c = p_by_deadline(c_c, p["deadline"])
             if p_c >= target:
                 ha = s_c.groupby("year").ha_contractor.sum().reindex(c_c.year, fill_value=0.0)
+                cs = pd.Timestamp("2000-" + p["contractor_start"])
                 rec.update(extra_ha_day=extra, p_with=p_c, ha_median=float(ha.median()), ha_max=float(ha.max()),
-                           message=f"Book a contractor for ~{ha.median():.0f} ha (+{extra} ha/day) from {p['contractor_start']}.")
+                           message=f"Book a contractor for ~{ha.median():.0f} ha (+{extra} ha/day) "
+                                   f"from {cs.day} {cs:%b}.")
                 break
         else:
             rec["message"] = f"Even +{MAX_CONTRACTOR_HA_DAY} ha/day does not reach {target:.0%}."
