@@ -202,3 +202,15 @@ CONFIDENCE = {
     "missing_passes": P(-5, "points", "spec 7.9"),
     "no_farmer_observation": P(-5, "points", "spec 7.9"),
 }
+
+# ---------------------------------------------------------------- PROPOSED by Marek's agent (Task 4, 16 Oct 19:30)
+# Operation suitability for Today (spec 7.7). NOT yet agreed: Marek + Mirela to OK (shared file rule).
+SUITABILITY = {
+    "sowing_rain_caution_mm": P(1.0, "mm", "spec 7.7 'no rain today for sowing'; dataset dry day < 1 mm"),
+    "spray_rain_caution_mm": P(1.0, "mm", "proposed: rain during spraying (label: avoid wash-off)"),
+    "spray_wind_caution_m_s": P(5.0, "m/s", "spec 7.13 R6 check threshold (mean wind >= 5 m/s)"),
+}
+CONFIDENCE_LEVELS = {   # label for 'Data quality: ...' (spec 7.9 shows 'medium')
+    "high_min": P(70, "points", "proposed"),
+    "medium_min": P(40, "points", "proposed"),
+}
