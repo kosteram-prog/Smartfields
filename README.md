@@ -37,3 +37,14 @@ pytest                         # data-dependent tests are skipped when FIELDGO_D
 ## Layout
 `engine/` pure functions (contract in the build spec), `app/` Streamlit pages and `components/`, `tests/` pytest.
 File ownership: see the kickoff prompt (section 3).
+
+
+## Extra pages (Mirela — FieldGo integrations)
+
+Added on top of Marek's kickoff skeleton (do not replace his pages):
+
+- **Loss calculator** (`app/pages/6_Loss.py`) — per-farm euro impact for wet entry / delay; assumptions labelled in `engine/params.py` → `LOSS_CALC`.
+- **Satellite** (`app/pages/7_Satellite.py`) — Copernicus / Sentinel map; optional `COPERNICUS_ACCESS_TOKEN`, public EOX fallback tiles.
+- **Connect** (`app/pages/8_Connect.py`) — John Deere, CLAAS, Climate FieldView, weather stations as API connection points (no live OAuth).
+
+Parameters were **appended** only (`LOSS_CALC`, `SATELLITE`, `INTEGRATIONS`). Existing `COST` / `WET_TRAFFIC_LOSS` values were not changed.

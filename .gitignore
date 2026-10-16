@@ -6,6 +6,7 @@ extracts/
 *.tif
 *.tiff
 .env
+!.env.example
 secrets/
 __pycache__/
 .venv/
