@@ -37,3 +37,18 @@ pytest                         # data-dependent tests are skipped when FIELDGO_D
 ## Layout
 `engine/` pure functions (contract in the build spec), `app/` Streamlit pages and `components/`, `tests/` pytest.
 File ownership: see the kickoff prompt (section 3).
+
+## HTML prototype screens (review)
+
+Alongside the Streamlit kickoff, this branch adds a static farmer-facing prototype for review:
+
+- `index.html` — FieldGo branding, wet-soil / delay loss calculator, Copernicus/Sentinel map view, and demo API connect panel (John Deere, CLAAS, Climate FieldView, weather stations). Hooks are labelled as connect points only; no live vendor logins.
+- `serve.py` — optional local static server that can inject `COPERNICUS_ACCESS_TOKEN` into `/config.js` without writing secrets to disk.
+- `.env.example` — documents the optional token and port; never commit real values.
+
+```bash
+python3 serve.py
+# optional: COPERNICUS_ACCESS_TOKEN=your_token python3 serve.py
+```
+
+Open http://127.0.0.1:8000. Demo JSON datasets (`farms.json`, `weather.json`) are intentionally not committed on this branch; rebuild locally if you need the full compliance/weather demo data.

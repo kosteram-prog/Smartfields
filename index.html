@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FieldGo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+  :root{
+    --ink:#1a1d1a; --muted:#5f6b5f; --line:#dfe4dd; --bg:#f6f7f4;
+    --card:#fff; --green:#2f7a43; --amber:#a66a00; --red:#a8322a;
+    --blue:#2b5f8a;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:17px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  header{
+    background:var(--card); border-bottom:1px solid var(--line);
+    padding:14px 20px; display:flex; align-items:center; gap:14px;
+    position:sticky; top:0; z-index:10;
+  }
+  .logo{font-weight:700; font-size:20px; letter-spacing:-.3px}
+  .logo span{color:var(--green)}
+  .tag{color:var(--muted); font-size:14px}
+  select{
+    font:inherit; padding:8px 10px; border:1px solid var(--line);
+    border-radius:8px; background:#fff; margin-left:auto; max-width:46%;
+  }
+  main{max-width:860px; margin:0 auto; padding:22px 20px 60px}
+
+  .verdict{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:26px; margin-bottom:22px; border-left:6px solid var(--green);
+  }
+  .verdict.warn{border-left-color:var(--red)}
+  .verdict h1{margin:0 0 6px; font-size:27px; line-height:1.25; letter-spacing:-.4px}
+  .verdict p{margin:0; color:var(--muted); font-size:16px}
+  .money{
+    display:inline-block; margin-top:14px; padding:7px 13px;
+    background:#fdf3f2; color:var(--red); border-radius:8px;
+    font-weight:650; font-size:16px;
+  }
+  .farmline{
+    display:flex; gap:16px; flex-wrap:wrap; margin-top:16px;
+    padding-top:14px; border-top:1px solid var(--line);
+    font-size:14px; color:var(--muted);
+  }
+  .badge{
+    background:#eef3ec; color:var(--green); padding:2px 9px;
+    border-radius:20px; font-weight:600; font-size:13px;
+  }
+  .badge.b2{background:#eaf0f6; color:var(--blue)}
+
+  h2.sec{font-size:15px; text-transform:uppercase; letter-spacing:.7px;
+         color:var(--muted); margin:26px 0 10px; font-weight:650}
+
+  .item{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    margin-bottom:11px; overflow:hidden;
+  }
+  .row{
+    display:flex; gap:14px; padding:17px 19px; cursor:pointer;
+    align-items:flex-start;
+  }
+  .row:hover{background:#fafbf9}
+  .dot{width:11px;height:11px;border-radius:50%;margin-top:7px;flex:none}
+  .dot.high{background:var(--red)}
+  .dot.medium{background:var(--amber)}
+  .dot.data{background:var(--blue)}
+  .txt{flex:1; min-width:0}
+  .txt h3{margin:0 0 4px; font-size:17.5px; font-weight:640; letter-spacing:-.2px}
+  .txt p{margin:0; color:var(--muted); font-size:15.5px}
+  .where{margin-top:7px; font-size:13.5px; color:var(--muted)}
+  .amt{
+    font-weight:680; color:var(--red); white-space:nowrap; font-size:15.5px;
+    text-align:right; flex:none;
+  }
+  .amt small{display:block; font-weight:400; color:var(--muted); font-size:12px}
+  .chev{color:#b9c2b7; flex:none; margin-top:3px; transition:transform .15s}
+  .item.open .chev{transform:rotate(90deg)}
+
+  .detail{display:none; padding:0 19px 19px; border-top:1px solid var(--line)}
+  .item.open .detail{display:block}
+  .block{margin-top:15px}
+  .block h4{
+    margin:0 0 7px; font-size:12.5px; text-transform:uppercase;
+    letter-spacing:.6px; color:var(--muted); font-weight:650;
+  }
+  .fix{background:#f1f6f0; border-radius:9px; padding:13px 15px; font-size:16px}
+  .ev{width:100%; border-collapse:collapse; font-size:14.5px}
+  .ev td{padding:6px 0; border-bottom:1px solid var(--line); vertical-align:top}
+  .ev td:first-child{color:var(--muted); width:46%; padding-right:14px}
+  .law{font-size:13.5px; color:var(--muted); font-style:italic; margin-top:12px}
+
+  .wx .row{align-items:center}
+  .wxicon{font-size:22px; width:30px; text-align:center; flex:none}
+  .stage{
+    display:inline-block; background:#eef3ec; color:var(--green);
+    padding:1px 8px; border-radius:20px; font-size:13px; font-weight:600;
+    margin-left:6px;
+  }
+  .stage.low{background:#fdf6e8; color:var(--amber)}
+  .silent{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:20px 22px; display:flex; gap:14px; align-items:center;
+  }
+  .silent .big{font-size:26px}
+  .silent div{color:var(--muted); font-size:15.5px}
+  .silent strong{color:var(--ink); display:block; font-size:17px;
+                 margin-bottom:2px; font-weight:640}
+  .proof{
+    background:#eef3ec; border-radius:10px; padding:15px 17px; margin:11px 0 0;
+    font-size:15px;
+  }
+  .proof b{color:var(--green)}
+  .clean{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:46px 26px; text-align:center;
+  }
+  .clean .big{font-size:46px; line-height:1; margin-bottom:12px}
+  .clean h3{margin:0 0 6px; font-size:21px}
+  .clean p{margin:0; color:var(--muted)}
+
+  footer{
+    max-width:860px; margin:0 auto; padding:0 20px 50px;
+    color:var(--muted); font-size:13.5px; line-height:1.6;
+  }
+  footer hr{border:0; border-top:1px solid var(--line); margin:0 0 16px}
+  .quiet{
+    background:#eef3ec; border-radius:10px; padding:14px 16px;
+    margin-bottom:18px; font-size:15px; color:var(--ink);
+  }
+
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; margin-bottom:14px;
+  }
+  .panel h3{margin:0 0 6px; font-size:18px; font-weight:650; letter-spacing:-.2px}
+  .panel .lead{margin:0 0 14px; color:var(--muted); font-size:15px}
+  .panel .note{
+    margin-top:12px; font-size:13px; color:var(--muted); line-height:1.5;
+    background:#f3f4f2; border-radius:8px; padding:10px 12px;
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  @media (max-width:640px){ .grid2{grid-template-columns:1fr} }
+  label.field{
+    display:block; font-size:13px; color:var(--muted); margin-bottom:4px;
+    font-weight:600;
+  }
+  .field input, .field select{
+    width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line);
+    border-radius:8px; background:#fff; margin:0;
+  }
+  .calc-out{
+    margin-top:16px; padding:16px; border-radius:10px;
+    background:#fdf3f2; border:1px solid #f0d4d1;
+  }
+  .calc-out .big-eur{
+    font-size:28px; font-weight:700; color:var(--red); letter-spacing:-.4px;
+  }
+  .calc-out ul{margin:10px 0 0; padding-left:18px; color:var(--ink); font-size:14.5px}
+  .calc-out li{margin-bottom:4px}
+  button.primary{
+    margin-top:14px; font:inherit; font-weight:650; padding:10px 16px;
+    border:0; border-radius:8px; background:var(--green); color:#fff; cursor:pointer;
+  }
+  button.primary:hover{filter:brightness(.95)}
+  #satmap{
+    height:320px; border-radius:10px; border:1px solid var(--line);
+    background:#dfe4dd; margin-top:8px;
+  }
+  .sat-status{font-size:13.5px; color:var(--muted); margin-top:8px}
+  .sat-status.ok{color:var(--green)}
+  .sat-status.warn{color:var(--amber)}
+  .sat-links{margin-top:8px; font-size:14px}
+  .sat-links a{color:var(--blue)}
+  .api-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
+  @media (max-width:640px){ .api-grid{grid-template-columns:1fr} }
+  button.partner{
+    text-align:left; font:inherit; padding:14px 16px;
+    border:1px solid var(--line); border-radius:10px; background:#fafbf9;
+    cursor:pointer; display:flex; flex-direction:column; gap:4px;
+  }
+  button.partner:hover{border-color:var(--blue); background:#f0f5fa}
+  button.partner strong{font-size:15.5px; color:var(--ink)}
+  button.partner span{font-size:13px; color:var(--muted)}
+  button.partner.active{border-color:var(--blue); background:#f0f5fa}
+  .api-banner{
+    font-size:13.5px; margin-bottom:12px;
+    padding:10px 12px; background:#eaf0f6; border-radius:8px; color:var(--blue);
+  }
+  #api-detail{
+    display:none; margin-top:14px; padding:14px 16px;
+    border:1px solid var(--line); border-radius:10px; background:#fafbf9;
+    font-size:14.5px;
+  }
+  #api-detail.open{display:block}
+  #api-detail h4{margin:0 0 6px; font-size:16px}
+  #api-detail ul{margin:8px 0 0; padding-left:18px}
+  #api-detail li{margin-bottom:3px}
+  #api-detail .tagline{color:var(--muted); font-size:13.5px; margin-top:8px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Field<span>Go</span></div>
+  <div class="tag">Checks your records before the inspector does</div>
+  <select id="pick"></select>
+</header>
+
+<main>
+  <div id="verdict"></div>
+  <div id="list"></div>
+</main>
+
+<footer>
+  <hr>
+  <div id="meta"></div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+let DATA = null, WEATHER = null, CONFIG = { copernicusToken: '' };
+let satMap = null, currentFarm = null;
+
+const REGION_GEO = {
+  DE242: { lat: 50.32, lon: 11.92 },
+  NL226: { lat: 51.89, lon: 5.43 },
+  FRB06: { lat: 47.50, lon: 1.50 },
+  ES418: { lat: 41.65, lon: -4.72 },
+  ITC4C: { lat: 45.46, lon: 9.19 },
+  ITF63: { lat: 39.08, lon: 17.12 },
+  ITH55: { lat: 44.49, lon: 11.34 },
+  PL415: { lat: 52.41, lon: 16.93 }
+};
+
+const RECARE_COMPACTION_PCT = 6;
+const DELAY_PCT_PER_DAY = 0.15;
+
+function eur(n){
+  return '€' + Math.round(n).toLocaleString('en-GB');
+}
+
+function render(farm){
+  currentFarm = farm;
+  const m = DATA.meta;
+  const high = farm.findings.filter(f=>f.severity==='high');
+  const other = farm.findings.filter(f=>f.severity!=='high');
+  const v = document.getElementById('verdict');
+
+  if(farm.n_findings === 0){
+    v.className = 'verdict';
+    v.innerHTML = `
+      <h1>Everything looks fine.</h1>
+      <p>We checked all ${farm.n_parcels} of your fields against the rules that
+         affect your payments. Nothing needs your attention today.</p>
+      ${farmline(farm)}`;
+  } else {
+    v.className = 'verdict warn';
+    const n = farm.n_findings;
+    v.innerHTML = `
+      <h1>${n} thing${n>1?'s':''} to fix on your farm.</h1>
+      <p>We checked all ${farm.n_parcels} of your fields. Most are fine.
+         These are the ones that could cost you money.</p>
+      ${farm.money_at_risk>0 ? `<div class="money">${eur(farm.money_at_risk)}
+         of your payments at risk</div>` : ''}
+      ${farmline(farm)}`;
+  }
+
+  const list = document.getElementById('list');
+  let h = '';
+  if(farm.n_findings === 0){
+    h += `<div class="clean">
+      <div class="big">✓</div>
+      <h3>Nothing to do on your records</h3>
+      <p>We will tell you if that changes.</p></div>`;
+  } else {
+    if(high.length){
+      h += `<h2 class="sec">Fix these first</h2>` + high.map(card).join('');
+    }
+    if(other.length){
+      h += `<h2 class="sec">Worth a look</h2>` + other.map(card).join('');
+    }
+  }
+  h += weatherSection(farm.id);
+  h += lossCalculatorSection(farm);
+  h += satelliteSection(farm);
+  h += partnersSection();
+  list.innerHTML = h;
+
+  wireCalculator(farm);
+  initSatelliteMap(farm);
+  wirePartners();
+
+  document.getElementById('meta').innerHTML = `
+    <div class="quiet"><strong>Why so few alerts?</strong> We checked
+    ${farm.n_parcels} fields against ${m.rules.length} rules and a full year of
+    real daily weather, and said nothing about the ones that are fine. An alert
+    you can ignore is an alert you stop reading.${WEATHER ? `
+    Across all ${WEATHER.meta ? DATA.meta.n_farms : ''} demo farms, calendar-based
+    frost alarms would have fired
+    <strong>${WEATHER.meta.naive_frost_alerts_total} times</strong>; we fired
+    <strong>${WEATHER.meta.stage_frost_alerts_total}</strong>.` : ''}</div>
+    <strong>What this checks.</strong>
+    ${m.rules.map(r=>r.name + ' <em>(' + r.law + ')</em>').join(' &middot; ')}.
+    <br><br>
+    <strong>Where the data comes from.</strong> EU Agri-Hackathon 2026 dataset
+    (${m.n_farms} demo farms, ${m.n_parcels.toLocaleString('en-GB')} fields,
+    year ${m.year}), cross-checked against EUROSTAT regional statistics and
+    real AgERA5 weather. The rules are published EU law &mdash; nothing here is
+    predicted or guessed.
+    <br><br>
+    <strong>How the weather alerts work.</strong> We work out what stage each
+    crop had reached, from that field's own sowing date and the heat it has
+    accumulated since, then apply the damage threshold that belongs to that
+    stage. Thresholds are from the literature and the stage boundaries are
+    approximations still to be reviewed by an agronomist. Weather is measured
+    at regional level, so an event in your region may not have hit your field.
+    <br><br>
+    <strong>FieldGo</strong> is the farmer-facing name for this prototype
+    (repo folder may still be FarmGuard).`;
+}
+
+function farmline(f){
+  const tags = [];
+  if(f.organic) tags.push('<span class="badge">Organic</span>');
+  if(f.natura2000) tags.push('<span class="badge b2">Natura 2000</span>');
+  if(f.anc) tags.push('<span class="badge b2">Less-favoured area</span>');
+  return `<div class="farmline">
+    <span>${f.region_name}</span>
+    <span>${f.uaa_ha.toFixed(0)} ha &middot; ${f.n_parcels} fields</span>
+    <span>Payments ${eur(f.subsidy_total)} (${Math.round(f.subsidy_share*100)}% of what you sell)</span>
+    ${tags.join(' ')}
+  </div>`;
+}
+
+const WX = {
+  frost:{icon:'❄️', word:'Frost'},
+  heat :{icon:'🌡️', word:'Heat'},
+  rain :{icon:'🌧️', word:'Heavy rain'}
+};
+
+function weatherSection(farmId){
+  if(!WEATHER || !WEATHER.farms[farmId]) return '';
+  const w = WEATHER.farms[farmId];
+  let h = `<h2 class="sec">Weather that actually mattered</h2>`;
+
+  if(!w.alerts.length){
+    h += `<div class="silent">
+      <div class="big">🤫</div>
+      <div><strong>We said nothing about the weather this year.</strong>
+      There was cold and heat, but never when your crops could be hurt by it.</div>
+    </div>`;
+  } else {
+    const top = w.alerts.slice().sort((a,b)=>
+      Math.abs(b.value-b.threshold)-Math.abs(a.value-a.threshold)).slice(0,6);
+    h += top.map(a=>{
+      const k = WX[a.kind];
+      const d = new Date(a.date).toLocaleDateString('en-GB',
+                {day:'numeric', month:'long', year:'numeric'});
+      const plain = a.kind==='frost'
+        ? `It fell to ${a.value}°C. Your ${a.crop_name} was at
+           <b>${a.stage}</b>, when ${a.threshold}°C is enough to do damage.`
+        : a.kind==='heat'
+        ? `It reached ${a.value}°C. Your ${a.crop_name} was at
+           <b>${a.stage}</b> — the stage where heat costs you most.`
+        : `${a.value} mm of rain fell in one day on your ${a.crop_name}.`;
+      return `<div class="item wx" onclick="this.classList.toggle('open')">
+        <div class="row">
+          <div class="wxicon">${k.icon}</div>
+          <div class="txt">
+            <h3>${k.word} on ${d}
+              <span class="stage ${a.confidence==='lower'?'low':''}">${a.stage}</span>
+            </h3>
+            <p>${plain}</p>
+            <div class="where">${a.crop_name} &middot; ${a.fields}
+              field${a.fields>1?'s':''}</div>
+          </div>
+          <div class="chev">›</div>
+        </div>
+        <div class="detail">
+          <div class="block">
+            <h4>Why we are telling you this</h4>
+            <table class="ev">
+              <tr><td>what happened</td><td>${a.value}°C on ${d}</td></tr>
+              <tr><td>crop stage that day</td><td>${a.stage}</td></tr>
+              <tr><td>damage threshold at this stage</td><td>${a.threshold}°C</td></tr>
+              <tr><td>how we know the stage</td><td>your own sowing date plus
+                the heat the crop has had since</td></tr>
+              <tr><td>weather source</td><td>AgERA5, real measured daily
+                weather for your region</td></tr>
+              ${a.confidence==='lower'
+                ? `<tr><td>confidence</td><td>lower — rape growth stages are
+                   harder to pin down. Treat as a hint, not a fact.</td></tr>`
+                : ''}
+            </table>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const saved = w.naive_frost_alerts - w.stage_frost_alerts;
+  if(saved > 0){
+    h += `<div class="proof">
+      A simple calendar alarm would have woken you
+      <b>${w.naive_frost_alerts} times</b> this year for frost.
+      We woke you <b>${w.stage_frost_alerts}</b> —
+      because the other ${saved} happened when your crop could not be hurt.
+    </div>`;
+  }
+  if(w.crops_no_model && w.crops_no_model.length){
+    h += `<div class="proof" style="background:#f3f4f2">
+      We say nothing about your ${w.crops_no_model.join(' and ').toLowerCase()}
+      — we do not have a reliable growth model for
+      ${w.crops_no_model.length>1?'those crops':'that crop'}, so we would
+      rather stay quiet than guess.</div>`;
+  }
+  return h;
+}
+
+function lossCalculatorSection(farm){
+  const today = new Date();
+  const start = new Date(today); start.setDate(start.getDate() - 3);
+  const fmt = d => d.toISOString().slice(0,10);
+  return `
+  <h2 class="sec">If you enter the field now</h2>
+  <div class="panel" id="loss-panel">
+    <h3>Money at risk from wet soil / delay</h3>
+    <p class="lead">Uses this farm’s own area and output
+      (${farm.uaa_ha.toFixed(0)}&nbsp;ha, ${eur(farm.output_eur)} sales).
+      Compaction % is a literature scenario — not measured here.</p>
+    <div class="grid2">
+      <div class="field">
+        <label class="field" for="loss-status">Field status</label>
+        <select id="loss-status">
+          <option value="wet">Soil too wet (compaction risk)</option>
+          <option value="delay">Delayed field entry</option>
+          <option value="both">Wet soil + delay</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="field" for="loss-share">Share of farm entered (%)</label>
+        <input id="loss-share" type="number" min="1" max="100" value="100">
+      </div>
+      <div class="field">
+        <label class="field" for="loss-from">Period from</label>
+        <input id="loss-from" type="date" value="${fmt(start)}">
+      </div>
+      <div class="field">
+        <label class="field" for="loss-to">Period to</label>
+        <input id="loss-to" type="date" value="${fmt(today)}">
+      </div>
+    </div>
+    <button type="button" class="primary" id="loss-run">Estimate euro loss</button>
+    <div id="loss-out"></div>
+    <div class="note">
+      <strong>Assumptions (labelled).</strong>
+      Compaction: ${RECARE_COMPACTION_PCT}% of farm output on the entered share —
+      RECARE / soil-compaction literature order of magnitude, <em>not</em> a
+      yield trial on this farm. Delay: ${DELAY_PCT_PER_DAY}% of annual output
+      per calendar day in the period (illustrative timing cost). Revenue base =
+      this farm’s <code>output_eur</code> / <code>uaa_ha</code> from the
+      hackathon dataset. No measured compaction yields are invented.
+    </div>
+  </div>`;
+}
+
+function wireCalculator(farm){
+  const run = () => {
+    const status = document.getElementById('loss-status').value;
+    const share = Math.min(100, Math.max(1,
+      Number(document.getElementById('loss-share').value) || 100)) / 100;
+    const from = document.getElementById('loss-from').value;
+    const to = document.getElementById('loss-to').value;
+    const fromD = new Date(from), toD = new Date(to);
+    let days = Math.round((toD - fromD) / 86400000) + 1;
+    if(!isFinite(days) || days < 1) days = 1;
+
+    const base = farm.output_eur * share;
+    let compaction = 0, delay = 0;
+    if(status === 'wet' || status === 'both'){
+      compaction = base * (RECARE_COMPACTION_PCT / 100);
+    }
+    if(status === 'delay' || status === 'both'){
+      delay = base * (DELAY_PCT_PER_DAY / 100) * days;
+    }
+    const total = compaction + delay;
+    const perHa = farm.uaa_ha > 0 ? total / (farm.uaa_ha * share) : 0;
+
+    document.getElementById('loss-out').innerHTML = `
+      <div class="calc-out">
+        <div class="big-eur">${eur(total)}</div>
+        <div style="color:var(--muted);font-size:14px;margin-top:2px">
+          estimated loss for ${Math.round(share*100)}% of ${farm.id}
+          (${(farm.uaa_ha*share).toFixed(0)} ha) · ${days} day${days>1?'s':''}
+          (${from} → ${to})
+        </div>
+        <ul>
+          ${compaction > 0
+            ? `<li>Compaction scenario (${RECARE_COMPACTION_PCT}% of entered output):
+               <strong>${eur(compaction)}</strong>
+               — literature figure, not this farm’s measurement</li>` : ''}
+          ${delay > 0
+            ? `<li>Delay scenario (${DELAY_PCT_PER_DAY}% of entered output × ${days} d):
+               <strong>${eur(delay)}</strong>
+               — illustrative timing cost</li>` : ''}
+          <li>≈ ${eur(perHa)} per hectare entered
+            (from this farm’s ${eur(farm.output_eur / farm.uaa_ha)}/ha output)</li>
+        </ul>
+      </div>`;
+  };
+  const btn = document.getElementById('loss-run');
+  if(btn){ btn.onclick = run; run(); }
+}
+
+function satelliteSection(farm){
+  const geo = REGION_GEO[farm.region];
+  const browserUrl = geo
+    ? `https://browser.dataspace.copernicus.eu/?lat=${geo.lat}&lng=${geo.lon}&zoom=11`
+    : 'https://browser.dataspace.copernicus.eu/';
+  return `
+  <h2 class="sec">Satellite view (Copernicus / Sentinel)</h2>
+  <div class="panel">
+    <h3>Sentinel imagery over your region</h3>
+    <p class="lead">Centred on NUTS-3 region
+      <strong>${farm.region_name}</strong> (${farm.region}).
+      Parcel outlines are not in the demo dataset — this is the regional view.</p>
+    <div id="satmap"></div>
+    <div id="sat-status" class="sat-status"></div>
+    <div class="sat-links">
+      Open the same area in
+      <a href="${browserUrl}" target="_blank" rel="noopener">
+        Copernicus Browser</a> (ESA Data Space).
+    </div>
+    <div class="note">
+      Default tiles: public EOX Sentinel-2 cloudless mosaic (no API key).
+      Optional live CDSE token: set env
+      <code>COPERNICUS_ACCESS_TOKEN</code> and run
+      <code>python3 serve.py</code> — see status above. Never put secrets in the repo.
+    </div>
+  </div>`;
+}
+
+function initSatelliteMap(farm){
+  const el = document.getElementById('satmap');
+  const status = document.getElementById('sat-status');
+  if(!el || typeof L === 'undefined'){
+    if(status){
+      status.className = 'sat-status warn';
+      status.textContent = 'Map library did not load (needs network for Leaflet CDN). Use the Copernicus Browser link below.';
+    }
+    return;
+  }
+  const geo = REGION_GEO[farm.region] || { lat: 50, lon: 10 };
+  if(satMap){ satMap.remove(); satMap = null; }
+  satMap = L.map(el, { scrollWheelZoom: false }).setView([geo.lat, geo.lon], 11);
+
+  L.tileLayer(
+    'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
+    {
+      attribution: '&copy; <a href="https://s2maps.eu">EOX Sentinel-2 cloudless</a> / Copernicus',
+      maxZoom: 16
+    }
+  ).addTo(satMap);
+
+  L.circleMarker([geo.lat, geo.lon], {
+    radius: 8, color: '#2f7a43', weight: 2, fillColor: '#2f7a43', fillOpacity: 0.35
+  }).addTo(satMap).bindPopup(`${farm.id}<br>${farm.region_name}`);
+
+  const token = (CONFIG && CONFIG.copernicusToken) || '';
+  if(token){
+    status.className = 'sat-status ok';
+    status.textContent = 'COPERNICUS_ACCESS_TOKEN is set (via serve.py). Showing public Sentinel mosaic; token is ready for CDSE Process API / OGC calls in a connected backend.';
+  } else {
+    status.className = 'sat-status warn';
+    status.textContent = 'No COPERNICUS_ACCESS_TOKEN — showing public Sentinel-2 cloudless tiles (no key). For live CDSE API access, set the env var and run python3 serve.py.';
+  }
+  setTimeout(() => satMap.invalidateSize(), 80);
+}
+
+function partnersSection(){
+  return `
+  <h2 class="sec">Connect farm systems (API)</h2>
+  <div class="panel">
+    <h3>Connection points — not live logins</h3>
+    <div class="api-banner">
+      FieldGo can connect via API to John&nbsp;Deere, CLAAS, Climate FieldView,
+      and weather stations. These buttons are <strong>integration points</strong>
+      only. This demo does <strong>not</strong> complete OAuth, does
+      <strong>not</strong> call private vendor APIs, and does
+      <strong>not</strong> import partner data.
+    </div>
+    <div class="api-grid" id="partner-grid">
+      <button type="button" class="partner" data-id="john-deere">
+        <strong>John Deere</strong>
+        <span>Connect — Operations Center API</span>
+      </button>
+      <button type="button" class="partner" data-id="claas">
+        <strong>CLAAS</strong>
+        <span>Connect — TELEMATICS / API</span>
+      </button>
+      <button type="button" class="partner" data-id="fieldview">
+        <strong>Climate FieldView</strong>
+        <span>Connect — FieldView API</span>
+      </button>
+      <button type="button" class="partner" data-id="weather">
+        <strong>Weather stations</strong>
+        <span>Connect — station / IoT API</span>
+      </button>
+    </div>
+    <div id="api-detail"></div>
+    <div class="note">
+      No partner credentials are stored in this prototype. A real deployment
+      would finish OAuth in a secure backend and then pull the data listed below.
+    </div>
+  </div>`;
+}
+
+const PARTNERS = {
+  'john-deere': {
+    title: 'John Deere Operations Center',
+    auth: 'OAuth 2.0 (Operations Center API)',
+    flows: ['Machines and fleet status', 'Field boundaries', 'Field operations / as-applied', 'Work orders']
+  },
+  'claas': {
+    title: 'CLAAS TELEMATICS',
+    auth: 'OAuth / partner API',
+    flows: ['Machines and telemetry', 'Field boundaries', 'Harvest and field operations', 'Fleet utilisation']
+  },
+  'fieldview': {
+    title: 'Climate FieldView',
+    auth: 'OAuth 2.0 (Climate FieldView API)',
+    flows: ['Field boundaries', 'Planting and application operations', 'Yield layers', 'Scouting notes']
+  },
+  'weather': {
+    title: 'Weather stations',
+    auth: 'API key / station IoT endpoint',
+    flows: ['Local temperature and rainfall', 'Soil moisture (if supported)', 'Hourly observations for GO / NO-GO', 'Threshold alerts']
+  }
+};
+
+function wirePartners(){
+  const detail = document.getElementById('api-detail');
+  document.querySelectorAll('#partner-grid .partner').forEach(btn=>{
+    btn.onclick = () => {
+      document.querySelectorAll('#partner-grid .partner').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      const p = PARTNERS[btn.getAttribute('data-id')];
+      detail.classList.add('open');
+      detail.innerHTML = `
+        <h4>${p.title} — ready to connect</h4>
+        <p>Integration is prepared for <strong>${p.auth}</strong>.
+           No live login was performed.</p>
+        <p><strong>Data that would flow after a real connection:</strong></p>
+        <ul>${p.flows.map(f=>`<li>${f}</li>`).join('')}</ul>
+        <p class="tagline">Status: connection point only — not linked to a live account.</p>`;
+    };
+  });
+}
+
+function card(f){
+  const rows = Object.entries(f.evidence)
+    .map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  return `<div class="item" onclick="this.classList.toggle('open')">
+    <div class="row">
+      <div class="dot ${f.severity}"></div>
+      <div class="txt">
+        <h3>${f.headline}</h3>
+        <p>${f.plain}</p>
+        <div class="where">${f.n_fields>1
+          ? f.n_fields + ' fields &middot; ' + Math.round(f.total_ha) + ' ha'
+          : f.crop + ' &middot; ' + f.area_ha + ' ha &middot; field '
+            + f.parcel.replace('PARCEL-','')}</div>
+      </div>
+      ${f.at_risk>0
+        ? `<div class="amt">${eur(f.at_risk)}<small>${f.at_risk_label}</small></div>`
+        : ''}
+      <div class="chev">›</div>
+    </div>
+    <div class="detail">
+      <div class="block">
+        <h4>What to do</h4>
+        <div class="fix">${f.fix}</div>
+      </div>
+      <div class="block">
+        <h4>Why we are telling you this</h4>
+        <table class="ev">${rows}</table>
+        ${f.law ? `<div class="law">Rule: ${f.law}</div>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+function boot(){
+  Promise.all([
+    fetch('farms.json').then(r=>r.json()),
+    fetch('weather.json').then(r=>r.json()).catch(()=>null),
+    fetch('config.js').then(r=>r.ok ? r.text() : null).catch(()=>null)
+  ]).then(([d, w, cfgText])=>{
+    DATA = d; WEATHER = w;
+    if(cfgText){
+      try {
+        (0, eval)(cfgText);
+        if(window.FIELDGO_CONFIG) CONFIG = Object.assign(CONFIG, window.FIELDGO_CONFIG);
+      } catch(_){ /* ignore */ }
+    }
+    const sel = document.getElementById('pick');
+    sel.innerHTML = d.farms.map((f,i)=>
+      `<option value="${i}">${f.id} — ${f.region_name}
+       ${f.organic?'(organic)':''} — ${f.n_findings} to fix</option>`
+    ).join('');
+    sel.onchange = ()=>render(d.farms[sel.value]);
+    render(d.farms[0]);
+  }).catch(()=>{
+    document.getElementById('verdict').innerHTML =
+      '<div class="verdict warn"><h1>Could not load the data.</h1>'+
+      '<p>Serve this folder with <code>python3 serve.py</code> or '+
+      '<code>python3 -m http.server 8000</code>.</p></div>';
+  });
+}
+
+boot();
+</script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+# Kickoff data / extracts (do not commit)
 data/
 extracts/
 *.csv
@@ -9,3 +10,14 @@ extracts/
 secrets/
 __pycache__/
 .venv/
+
+# FieldGo HTML prototype extras
+.DS_Store
+*.py[cod]
+venv/
+.vscode/
+.idea/
+config.local.js
+.env.local
+!.env.example
+dg-agri-hackathon-datasets/
