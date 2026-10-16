@@ -226,3 +226,20 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def farm_summary(holding_id: str = "FARM-13525") -> dict:
+    """Headline numbers for the Farm page (origin: synthetic)."""
+    farm = load_farm(holding_id)
+    h = _table("holding")
+    h = h[h.holding_id == holding_id]
+    lab = _table("labour")
+    lab = lab[lab.holding_id == holding_id]
+    crops = farm.groupby("crop").agg(parcels=("parcel_id", "count"), ha=("area_ha", "sum")).round(1)
+    return {"holding_id": holding_id, "nuts3": farm.nuts3.iloc[0], "parcels": int(len(farm)),
+            "uaa_ha": float(h.uaa_ha.iloc[0]) if len(h) else round(float(farm.area_ha.sum()), 1),
+            "awu": float(lab.static_labour_awu.iloc[0]) if len(lab) else "not available",
+            "organic": bool(int(farm.organic.iloc[0])),
+            "crops": {c: {"parcels": int(r.parcels), "ha": float(r.ha)} for c, r in crops.iterrows()},
+            "winter_cereals_ha": round(float(farm[farm.crop.isin(["BARL", "COWT"])].area_ha.sum()), 1),
+            "origin": "synthetic"}

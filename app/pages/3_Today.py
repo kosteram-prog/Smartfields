@@ -59,7 +59,9 @@ with left:
         ui.status_tile("Operation suitability", t["suitability"], size="1.3rem")
     st.caption(f"{machine} at {load}% load -> axle load {t.get('axle_load_t')} t, class {t.get('load_class')} "
                "(default machine profile, assumption)")
-    money_line.render(replay)
+    if operation == "sowing":
+        money_line.render(pd.Timestamp(replay), {"parcel_id": parcel, "machine_id": machine, "load_pct": load,
+                                                 "passes": int(passes)})
     if operation == "fertilising":
         with st.container(border=True):
             n_rate = st.number_input("N in this application (kg N/ha)", min_value=0.0, value=None, step=10.0,
@@ -104,7 +106,7 @@ with right:
         ui.show_origin("assumption", stub)
 
 if st.button("Find a safer plan"):
-    plan_card.render(parcel, replay, machine, load, int(passes))
+    plan_card.render(parcel, replay, machine, load, int(passes), operation)
 mark_done.render(t, parcel, operation)
 zones_panel.render()
 if REAL:
