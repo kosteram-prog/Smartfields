@@ -59,5 +59,15 @@ average, not field-level).
 - Weather is a regional average; soil is synthetic per parcel; the soil-water model is a simple 0-30 cm bucket.
 - Synthetic yields and prices do not react to weather, so euro values are illustrative and always shown as a range.
 
+## Extra pages (Mirela — FieldGo integrations)
+
+Added on top of Marek's kickoff skeleton (do not replace his pages):
+
+- **Loss calculator** (`app/pages/6_Loss.py`) — per-farm euro impact for wet entry / delay; assumptions labelled in `engine/params.py` → `LOSS_CALC`.
+- **Satellite** (`app/pages/7_Satellite.py`) — Copernicus / Sentinel map; optional `COPERNICUS_ACCESS_TOKEN`, public EOX fallback tiles.
+- **Connect** (`app/pages/8_Connect.py`) — John Deere, CLAAS, Climate FieldView, weather stations as API connection points (no live OAuth).
+
+Parameters were **appended** only (`LOSS_CALC`, `SATELLITE`, `INTEGRATIONS`). Existing `COST` / `WET_TRAFFIC_LOSS` values were not changed.
+
 ## Licence and credits
 Code: MIT (see `LICENSE` once added). Data sources, libraries, methods and AI tools: see [CREDITS.md](CREDITS.md).

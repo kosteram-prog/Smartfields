@@ -221,3 +221,52 @@ LINT = {   # RecordLint thresholds (spec 7.13); R6 values from the spec table, P
                   "after harvest is normal practice)"),
     "r2_ppp_types": P(("HERBICIDE",), "", "pre-event test: herbicides counted as synthetic PPP on organic farms"),
 }
+
+# ---------------------------------------------------------------- FieldGo integrations (Mirela append)
+# Do not edit values above this line in shared PRs without Product Lead review.
+# Loss calculator and satellite defaults for pages 6-8.
+LOSS_CALC = {
+    "recare_compaction_pct": P(6.0, "% of entered output",
+        "RECARE soil-compaction literature order of magnitude; not measured on demo farm"),
+    "delay_pct_per_day": P(1.0, "% of entered output / day",
+        "aligned with COST.loss_rate_pct_per_day['default'] (IUNG Pulawy); illustrative"),
+    "default_entered_share_pct": P(100, "%", "UI default: whole farm UAA"),
+    "demo_output_eur_ha": P(1200, "EUR/ha",
+        "assumption for stub demo when organisers' economics are not loaded"),
+}
+
+SATELLITE = {
+    "nuts3_latlon": P(
+        {"PL415": (52.41, 16.93), "DE242": (50.32, 11.92), "FRB06": (47.50, 1.50),
+         "ES418": (41.65, -4.72), "NL226": (51.89, 5.43), "ITC4C": (45.46, 9.19),
+         "ITF63": (40.68, 14.77), "ITH55": (45.41, 11.88)},
+        "lat,lon", "approximate NUTS3 centroids for map centre"),
+    "fallback_tiles": P(
+        "https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2021_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg",
+        "URL template", "public EOX Sentinel-2 cloudless mosaic (no API key)"),
+    "env_token_name": P("COPERNICUS_ACCESS_TOKEN", "",
+        "optional CDSE token via env; never commit real values"),
+}
+
+INTEGRATIONS = {
+    "partners": P(
+        [
+            {"id": "john-deere", "name": "John Deere Operations Center",
+             "auth": "OAuth 2.0 (Operations Center API)",
+             "flows": ["Machines and fleet status", "Field boundaries",
+                       "Field operations / as-applied", "Work orders"]},
+            {"id": "claas", "name": "CLAAS TELEMATICS",
+             "auth": "OAuth / partner API",
+             "flows": ["Machines and telemetry", "Field boundaries",
+                       "Harvest and field operations", "Fleet utilisation"]},
+            {"id": "fieldview", "name": "Climate FieldView",
+             "auth": "OAuth 2.0 (Climate FieldView API)",
+             "flows": ["Field boundaries", "Planting and application operations",
+                       "Yield layers", "Scouting notes"]},
+            {"id": "weather", "name": "Weather stations",
+             "auth": "API key / station IoT endpoint",
+             "flows": ["Local temperature and rainfall", "Soil moisture (if supported)",
+                       "Hourly observations for GO / NO-GO", "Threshold alerts"]},
+        ],
+        "", "UI connection points only — no live vendor login in this prototype"),
+}
