@@ -214,3 +214,10 @@ CONFIDENCE_LEVELS = {   # label for 'Data quality: ...' (spec 7.9 shows 'medium'
     "high_min": P(70, "points", "proposed"),
     "medium_min": P(40, "points", "proposed"),
 }
+LINT = {   # RecordLint thresholds (spec 7.13); R6 values from the spec table, PROPOSED block (see above)
+    "r6_rain_mm": P(10.0, "mm", "spec 7.13 R6: spray on a day with >= 10 mm rain ('check')"),
+    "r6_wind_m_s": P(5.0, "m/s", "spec 7.13 R6: mean wind >= 5 m/s ('check')"),
+    "r1_scope": P(("plant_protection",), "", "pre-event test: R1 on sprays only (fertiliser before sowing / "
+                  "after harvest is normal practice)"),
+    "r2_ppp_types": P(("HERBICIDE",), "", "pre-event test: herbicides counted as synthetic PPP on organic farms"),
+}
