@@ -27,13 +27,13 @@ def render(parcel_id, date, machine_id, load_pct, passes, operation="sowing") ->
     for col, p in zip(cols, plans):
         with col, st.container(border=True):
             st.markdown(("⭐ **Recommended** · " if p.get("recommended") else "") + f"**{p['lever'].capitalize()}**")
-            ui.status_tile(f"{p.get('machine_id', '')} · {p['parcel_id']} · {pd.Timestamp(p['date']):%d %b} · "
+            ui.status_tile(f"{p.get('machine_id', '')} · {ui.field_name(p['parcel_id'])} · {pd.Timestamp(p['date']):%d %b} · "
                            f"{p['load_pct']}% load", p["status"],
                            size="1.4rem")
-            st.write(p["reason"])
+            st.write(ui.humanize(p["reason"]))
             alts = p.get("alternatives") or []
             if alts:
-                st.caption("Also: " + ", ".join(f"{a['parcel_id']} ({a['status']})" for a in alts))
+                st.caption("Also: " + ", ".join(f"{ui.field_name(a['parcel_id'])} ({a['status']})" for a in alts))
             st.write(f"Cost of this plan: {ui.fmt_eur(p['cost']['eur'])}"
                      + (f" ({p['cost']['note']})" if p["cost"].get("note") else ""))
             ui.show_origin(p["cost"]["origin"], not REAL)

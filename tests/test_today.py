@@ -108,3 +108,12 @@ def test_custom_machine_uses_its_axle_load_and_raises_confidence():
                   custom_machine={"name": "My JD 6R + 4 m drill", "axle_t": 9.0})
     assert r["load_class"] == "L4" and r["axle_load_t"] == 9.0
     assert r["confidence"] == base["confidence"] + 10
+
+
+def test_seven_day_outlook_starts_with_the_72h_strip():
+    sw, wx = inputs(rwc=(0.8,) * 10, rain=(0,) * 10, tmax=(12,) * 10, wind=(2,) * 10)
+    r = td.assess(sw, wx, PARCEL, "2016-10-13", "M2", 100, 1, "sowing")
+    assert len(r["outlook7"]) == 7 and r["outlook7"][:3] == r["strip72"]
+    assert r["days_to_first_go_7d"] == 0
+    short = run(date="2016-10-14")                        # weather ends 15 Oct: later days not available
+    assert [o["status"] for o in short["outlook7"]][2:] == ["not available"] * 5

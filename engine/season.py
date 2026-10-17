@@ -41,14 +41,20 @@ def resolve_params(params: dict | None) -> dict:
         "units": prm.CAPACITY["own_units"].value, "hours": prm.CAPACITY["hours_per_day"].value,
         "ha_per_day": None, "contractor_ha_day": 0.0, "contractor_start": None,
         "caution_weight": prm.SEASON["caution_weight"].value, "passes": 1, "operation": "sowing",
-        "load_class": None, "parcel_ids": None, "parcel_order": None,
+        "load_class": None, "parcel_ids": None, "parcel_order": None, "fleet": (),
     }
     d.update({k: v for k, v in p.items() if v is not None})
     m = prm.MACHINES[d["machine_id"]]
+    # A6 (17 Oct): extra own machines, e.g. (("M3", 1),). Capacities add up; the day status uses the heaviest class
+    # of the fleet (conservative: every machine waits until the heaviest one may go).
+    fleet = [(mid, int(u)) for mid, u in (d.get("fleet") or ()) if mid in prm.MACHINES and int(u) > 0]
     if d["ha_per_day"] is None:
-        d["ha_per_day"] = d["units"] * m["rate_ha_h"].value * d["hours"]
+        d["ha_per_day"] = d["units"] * m["rate_ha_h"].value * d["hours"] + sum(
+            u * prm.MACHINES[mid]["rate_ha_h"].value * d["hours"] for mid, u in fleet)
     if d["load_class"] is None:
-        d["load_class"] = m["load_class"]
+        classes = [m["load_class"]] + [prm.MACHINES[mid]["load_class"] for mid, _ in fleet]
+        d["load_class"] = max(classes, key=lambda c: int(c[1:]))
+    d["fleet"] = tuple(fleet)
     if d["contractor_start"] is None:
         d["contractor_start"] = d["window_start"]
     return d

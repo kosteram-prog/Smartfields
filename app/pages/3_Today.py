@@ -35,7 +35,7 @@ def assess(parcel, date, machine, load, passes, operation, observation, custom, 
 
 
 farm = parcels(st.session_state["farm"])
-label = {r.parcel_id: f"{r.parcel_id} · {r.crop} · {r.area_ha:.1f} ha · clay {r.clay_pct:.0f}%" for r in farm.itertuples()}
+label = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
 c = st.columns([3, 1.4, 2.4, 1.6, 1])
 parcel = c[0].selectbox("Parcel", list(farm.parcel_id), format_func=label.get,
                         index=list(farm.parcel_id).index("PARCEL-0149869") if "PARCEL-0149869" in set(farm.parcel_id) else 0)
@@ -75,15 +75,16 @@ stub = not REAL
 
 left, right = st.columns([1, 2])
 with left:
-    ui.status_tile(f"{parcel} · {pd.Timestamp(replay):%d %b %Y}", t["status"], size="3rem")
+    ui.status_tile(f"{ui.field_name(parcel)} · {pd.Timestamp(replay):%d %b %Y}", t["status"], size="3rem")
     ui.show_origin(t["origin"], stub)
     a, s = st.columns(2)
     with a:
         ui.status_tile("Field access", t["access"], size="1.3rem")
     with s:
         ui.status_tile("Operation suitability", t["suitability"], size="1.3rem")
-    st.caption(f"{t.get('machine_id', machine)} at {load}% load -> axle load {t.get('axle_load_t')} t, class "
-               f"{t.get('load_class')} " + ("(your machine data)" if custom else "(default machine profile, assumption)"))
+    prof = custom["name"] if custom else prm.MACHINES[machine]["profile"]
+    st.caption(f"{prof} at {load}% load: {t.get('axle_load_t')} t on the heaviest axle "
+               + ("(your machine data)" if custom else "(typical machine, assumption)"))
     go_now_line.render(t)
     if operation == "sowing":
         money_line.render(pd.Timestamp(replay), {"parcel_id": parcel, "machine_id": machine, "load_pct": load,
@@ -115,13 +116,24 @@ with right:
     first = t.get("days_to_first_go")
     if first is not None:
         st.caption("First GO: " + ("today" if first == 0 else f"in {first} day(s)" if isinstance(first, int) else str(first)))
+    out7 = t.get("outlook7") or []
+    if len(out7) > 3:
+        chips = "".join(
+            f"<span style='display:inline-block;background:{ui.STATUS_COLORS.get(o['status'], ui.STATUS_COLORS['not available'])};"
+            f"color:white;border-radius:8px;padding:3px 8px;margin:2px;font-size:0.75rem'>"
+            f"{pd.Timestamp(o['date']):%a %d}: {o['status']}</span>" for o in out7)
+        st.markdown(f"<div><small>Next 7 days:</small> {chips}</div>", unsafe_allow_html=True)
     st.markdown("**Why**")
-    for r in t["reasons"]:
-        st.markdown(f"- {r}")
+    for r in ui.plain_reasons(t):
+        st.markdown(r)
     cond = t.get("conditions") or {}
-    if cond:
-        st.caption(f"Soil RWC_eff {cond['rwc_eff']:.2f} (modelled) · rain today {cond['precip_mm']:.1f} mm, last 48 h "
-                   f"{cond['precip_last48h_mm']:.1f} mm · Tmax {cond['tmax_c']:.1f} °C · wind {cond['wind_m_s']:.1f} m/s (real, regional)")
+    with st.expander("Technical details (soil water, thresholds, weather)"):
+        for r in t["reasons"]:
+            st.markdown(f"- {r}")
+        if cond:
+            st.caption(f"Soil RWC_eff {cond['rwc_eff']:.2f} (modelled; 1 = field capacity) · rain today "
+                       f"{cond['precip_mm']:.1f} mm, last 48 h {cond['precip_last48h_mm']:.1f} mm · Tmax "
+                       f"{cond['tmax_c']:.1f} °C · wind {cond['wind_m_s']:.1f} m/s (real, regional)")
     with st.container(border=True):
         conf = t["confidence"]
         st.markdown(f"**Data quality: {t.get('data_quality', 'medium')} · Confidence: "

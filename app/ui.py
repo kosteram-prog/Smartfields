@@ -70,3 +70,83 @@ def shell(title: str) -> dt.date:
     st.info(BANNER, icon="⏪")
     st.title(title)
     return st.session_state["replay_date"]
+
+
+# --------------------------------------------------------------------------- farmer-friendly words (A3, A4)
+CROP_WORDS = {"BARL": "barley", "COWT": "wheat", "RAPE": "rapeseed", "MAIZ": "maize", "SUNF": "sunflower",
+              "HAY": "grass/hay", "OLIV": "olives"}
+
+
+def field_name(parcel_id: str) -> str:
+    """Short field name from a parcel id: PARCEL-0149869 -> 'Field 869' (unique on the demo farm)."""
+    return f"Field {str(parcel_id)[-3:]}"
+
+
+def soil_word(clay_pct, sand_pct) -> str:
+    if clay_pct is None or sand_pct is None:
+        return "soil n/a"
+    if clay_pct >= 40:
+        return "heavy clay"
+    if clay_pct >= 25:
+        return "clay loam"
+    if sand_pct >= 70:
+        return "sand"
+    if sand_pct >= 50:
+        return "sandy loam"
+    return "loam"
+
+
+def parcel_label(pid, crop, area_ha, clay_pct, sand_pct) -> str:
+    return (f"{field_name(pid)} · {CROP_WORDS.get(crop, crop)} · {area_ha:.1f} ha · "
+            f"{soil_word(clay_pct, sand_pct)}")
+
+
+def humanize(text: str) -> str:
+    """Replace parcel ids in engine text by field names."""
+    import re
+    return re.sub(r"PARCEL-\d*?(\d{3})\b", lambda m: f"Field {m.group(1)}", str(text))
+
+
+def wetness_words(rwc_eff) -> str:
+    if rwc_eff is None:
+        return "soil water not available"
+    if rwc_eff >= 1.05:
+        return "the topsoil is wetter than field capacity (just after rain)"
+    if rwc_eff >= 0.95:
+        return "the topsoil is at field capacity (as wet as it stays after draining)"
+    if rwc_eff >= 0.85:
+        return "the topsoil is moist, close to field capacity"
+    if rwc_eff >= 0.7:
+        return "the topsoil is moist but has started to dry"
+    return "the topsoil is dry enough"
+
+
+def plain_reasons(t: dict) -> list[str]:
+    """One or two farmer sentences from a Today result; the technical reasons stay in an expander."""
+    s, cond = t.get("status"), t.get("conditions") or {}
+    machine = t.get("machine_id")
+    prof = prm.MACHINES.get(machine, {}).get("profile", machine)
+    out = []
+    head = {"GO": "Go ahead", "CAUTION": "Only with care", "NO-GO": "Better not today"}.get(s, "Not available")
+    out.append(f"**{head}:** {wetness_words(cond.get('rwc_eff'))}, and the soil "
+               + ("can carry" if s == "GO" else "is too soft for") + f" a {str(prof).lower()} "
+               f"({t.get('axle_load_t')} t per axle).")
+    for r in t.get("reasons", []):
+        low = r.lower()
+        if "rain today" in low:
+            out.append("It is raining today.")
+        elif "previous 24 h" in low:
+            out.append("Heavy rain yesterday: the surface is still soft.")
+        elif "frozen soil" in low and "no fertilising" in low:
+            out.append("The soil is frozen: no fertilising (nitrate rules).")
+        elif "frozen soil" in low:
+            out.append("The soil is frozen and carries light and medium machines.")
+        elif "passes" in low:
+            out.append("Several passes on the same day make it stricter.")
+        elif "moisture deficit" in low:
+            out.append("Heavy machine: the soil should be at least 10 mm drier than field capacity.")
+        elif "wind" in low:
+            out.append("Too windy for spraying.")
+        elif "rain" in low and "sowing" in low:
+            out.append("Some rain today: not ideal for sowing.")
+    return out

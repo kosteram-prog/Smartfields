@@ -40,14 +40,26 @@ with st.expander("Inputs", expanded=True):
     c_start = c[2].date_input("Contractor from", start, format="DD.MM.YYYY")
     caution = c[3].radio("CAUTION day counts as", list(prm.SEASON["caution_weight_options"].value), index=1,
                          horizontal=True, format_func=lambda x: f"{x:g} day")
+    c = st.columns(4)
+    m2 = c[0].selectbox("Second machine (optional)", ["none"] + list(prm.MACHINES), index=0,
+                        format_func=lambda m: "none" if m == "none" else f"{m}: {prm.MACHINES[m]['profile']}",
+                        help="Large farms run several drills: capacities add up; the day status follows the "
+                             "heaviest machine (conservative).")
+    u2 = c[1].number_input("Units of the second machine", 0, 5, 1 if m2 != "none" else 0, disabled=m2 == "none")
+    fleet = ((m2, int(u2)),) if m2 != "none" and u2 > 0 else ()
     rate = prm.MACHINES[machine]["rate_ha_h"].value
-    st.caption(f"Own capacity: {units} x {rate} ha/h x {hours} h = **{units * rate * hours:.0f} ha/day** "
-               f"(machine class {prm.MACHINES[machine]['load_class']}) · rates and hours are assumptions")
+    cap = units * rate * hours + sum(u * prm.MACHINES[mid]["rate_ha_h"].value * hours for mid, u in fleet)
+    heavy = max([prm.MACHINES[machine]["load_class"]] + [prm.MACHINES[mid]["load_class"] for mid, _ in fleet],
+                key=lambda x: int(x[1:]))
+    st.caption(f"Own capacity: **{cap:.0f} ha/day** "
+               + (f"({units} × {machine} + {fleet[0][1]} × {fleet[0][0]}, {hours} h)" if fleet else
+                  f"({units} × {rate} ha/h × {hours} h)")
+               + f" · day status for class {heavy} · rates and hours are assumptions")
 
 md = lambda d: d.strftime("%m-%d")  # noqa: E731
 params = {"window_start": md(start), "deadline": md(deadline), "machine_id": machine, "units": int(units),
           "hours": float(hours), "contractor_ha_day": float(contractor), "contractor_start": md(c_start),
-          "caution_weight": float(caution)}
+          "caution_weight": float(caution), "fleet": fleet}
 if st.session_state.get("parcel_order"):
     params["parcel_order"] = tuple(st.session_state["parcel_order"])
 res = simulate(params)
@@ -148,11 +160,13 @@ if isinstance(wd, pd.DataFrame) and not wd.empty:
 # ------------------------------------------------------------------ parcel order
 st.subheader("Parcel order")
 order = pd.DataFrame(res["parcel_order"])
+if not order.empty:
+    order.insert(1, "field", order["parcel_id"].map(ui.field_name))
 if REAL and not order.empty:
     with st.expander("Change the order (your own priorities)"):
         st.caption("Edit the rank numbers and press Apply; the season is re-simulated with your order.")
-        ed = st.data_editor(order[["rank", "parcel_id", "crop", "area_ha", "clay_pct"]], hide_index=True,
-                            disabled=["parcel_id", "crop", "area_ha", "clay_pct"], key="order_editor")
+        ed = st.data_editor(order[["rank", "field", "crop", "area_ha", "clay_pct", "parcel_id"]], hide_index=True,
+                            disabled=["field", "parcel_id", "crop", "area_ha", "clay_pct"], key="order_editor")
         b1, b2 = st.columns(2)
         if b1.button("Apply my order"):
             st.session_state["parcel_order"] = list(ed.sort_values("rank").parcel_id)
@@ -163,7 +177,7 @@ if REAL and not order.empty:
     if st.session_state.get("parcel_order"):
         st.info("Using your own parcel order (spec 7.6 default replaced).")
 if not order.empty:
-    cols = [c for c in ["rank", "parcel_id", "crop", "area_ha", "clay_pct", "priority", "median_done",
+    cols = [c for c in ["rank", "field", "crop", "area_ha", "clay_pct", "priority", "median_done",
                         "share_years_late", "reason"] if c in order.columns]
     st.dataframe(order[cols], hide_index=True, width="stretch",
                  column_config={"share_years_late": st.column_config.ProgressColumn(

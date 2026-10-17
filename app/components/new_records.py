@@ -9,6 +9,9 @@ def render() -> None:
         st.info("No records yet. Use 'Mark as done' on the Today page.")
         return
     df = pd.DataFrame(recs)
+    if "parcel_id" in df:
+        import ui
+        df.insert(0, "field", df["parcel_id"].map(ui.field_name))
     for col in df.columns:
         if df[col].map(lambda v: isinstance(v, (list, dict))).any():
             df[col] = df[col].map(lambda v: ", ".join(v) if isinstance(v, list) else str(v))

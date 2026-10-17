@@ -33,6 +33,13 @@ def render(holding_id: str, campaign=2024) -> None:
     if not res["cards"]:
         st.success("No issues found by rules R1-R6.")
         return
+    flags = res.get("flags")
+    if flags is not None and len(flags):
+        out = flags.copy()
+        if "parcel_id" in out:
+            out.insert(0, "field", out["parcel_id"].map(ui.field_name))
+        st.download_button("Download all flags (CSV, for your agronomist or the inspector)", out.to_csv(index=False),
+                           f"fieldgo_record_check_{campaign or 'all'}.csv", "text/csv")
     for c in issues + checks:
         icon = "🔴" if c.get("severity", "issue") == "issue" else "🟡"
         with st.container(border=True):
@@ -42,6 +49,8 @@ def render(holding_id: str, campaign=2024) -> None:
             st.markdown(f"**Suggested fix:** {c['fix']}")
             with st.expander(f"Show the {c['n_rows']} rows"):
                 st.dataframe(c["rows"], hide_index=True, width="stretch")
+                st.download_button("Download these rows (CSV)", c["rows"].to_csv(index=False),
+                                   f"fieldgo_{c['rule']}_{campaign or 'all'}.csv", "text/csv", key=f"dl_{c['rule']}")
     if REAL:
         _wet_days(holding_id, campaign)
     st.caption("Records are synthetic (organisers' dataset); weather for R3/R6 is regional AgERA5. "

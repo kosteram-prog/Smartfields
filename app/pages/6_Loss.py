@@ -43,7 +43,7 @@ def table(holding, date, machine, load, operation, share):
     for r in pool.itertuples():
         s_ = stt.status.get(r.parcel_id, "not available")
         e = entry_cost(s_, lc, r.crop, r.area_ha, {"trafficked_share": share / 100.0, **econ})
-        rows.append({"parcel_id": r.parcel_id, "crop": r.crop, "area_ha": r.area_ha, "clay_pct": r.clay_pct,
+        rows.append({"field": ui.field_name(r.parcel_id), "parcel_id": r.parcel_id, "crop": r.crop, "area_ha": r.area_ha, "clay_pct": r.clay_pct,
                      "status": s_, "go_now_eur": e["eur"], "subsoil_eur_per_year": e.get("persistent_eur_per_year")})
     return pd.DataFrame(rows), lc, axle
 

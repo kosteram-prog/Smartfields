@@ -205,3 +205,13 @@ def test_regional_soil_as_parcel_texture(extracted):
     assert r["om_pct"] == pytest.approx(23.7 * 1.724 / 10, abs=0.01) and r["origin"] == "modelled"
     with pytest.raises(ValueError):
         data.load_regional_soil("DE242")                    # filtered out at extraction
+
+
+@pytest.mark.needs_data
+def test_parcel_shapes_are_closed_polygons_for_every_parcel():
+    from engine import data
+    s = data.load_parcel_shapes("FARM-13525")
+    farm = data.load_farm("FARM-13525")
+    assert set(s.parcel_id) == set(farm.parcel_id)
+    for r in s.itertuples():
+        assert len(r.xs) == len(r.ys) >= 4 and r.xs[0] == r.xs[-1] and r.ys[0] == r.ys[-1]

@@ -123,13 +123,17 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
         return {"access": c["access"], "suitability": s_suit, "status": _worse(c["access"], s_suit),
                 "reasons": list(c["reasons"]) + suit_reasons, "risk": c.get("risk"), "r": r, "w": w}
 
-    strip, first_go = [], "beyond 72 h"
-    for k in range(3):
+    strip, first_go, outlook = [], "beyond 72 h", []
+    for k in range(7):                                  # 7-day outlook (A7); the first 3 days are the 72-h strip
         dd = d + pd.Timedelta(days=k)
         res = day(dd)
-        strip.append({"date": dd, "status": res["status"] if res else NA, "origin": "real+modelled"})
-        if res and res["status"] == "GO" and first_go == "beyond 72 h":
-            first_go = k
+        item = {"date": dd, "status": res["status"] if res else NA, "origin": "real+modelled"}
+        outlook.append(item)
+        if k < 3:
+            strip.append(item)
+            if res and res["status"] == "GO" and first_go == "beyond 72 h":
+                first_go = k
+    first_go_7 = next((k for k, o in enumerate(outlook) if o["status"] == "GO"), "beyond 7 days")
 
     now = day(d)
     if now is None:
@@ -145,7 +149,8 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
     r, w = now["r"], now["w"]
     return {
         "status": now["status"], "access": now["access"], "suitability": now["suitability"], "risk": now["risk"],
-        "strip72": strip, "days_to_first_go": first_go, "reasons": now["reasons"],
+        "strip72": strip, "days_to_first_go": first_go, "outlook7": outlook, "days_to_first_go_7d": first_go_7,
+        "reasons": now["reasons"],
         "confidence": score, "data_quality": quality_label(score), "based_on": based_on, "missing": missing,
         "best_next_check": BEST_NEXT_CHECK,
         "conditions": {"rwc_eff": float(r.RWC_eff), "precip_mm": float(w.precip_mm),

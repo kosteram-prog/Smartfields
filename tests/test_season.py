@@ -195,3 +195,10 @@ def test_custom_parcel_order_is_followed():
     sched, _ = season.simulate(statuses(p), p, own_ha_day=4.0, years=[2016], order=["B", "A"])
     first = sched.sort_values("date").groupby("parcel_id").completion_date.first()
     assert first["B"] < first["A"]
+
+
+def test_fleet_adds_capacity_and_uses_the_heaviest_class():
+    p = season.resolve_params({"machine_id": "M2", "units": 1, "hours": 10, "fleet": (("M3", 1),)})
+    assert p["ha_per_day"] == pytest.approx(1.5 * 10 + 2.5 * 10)
+    assert p["load_class"] == "L3"
+    assert season.resolve_params({"machine_id": "M2"})["load_class"] == "L2"

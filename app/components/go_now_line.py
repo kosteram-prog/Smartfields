@@ -43,7 +43,8 @@ def render(today_result: dict) -> None:
     if comp:
         et = entry_cost_tyre(comp, *args)
         _line(et, f"With your tyres ({comp.get('inflation_bar', 0):.1f} bar, subsoil {comp.get('subsoil', '?')})")
-    st.caption("Year 1 anchor: Håkansson multi-site study (10-12 t axle ~15% year-1 loss); lighter classes "
-               "interpolated. Long-term part: RECARE policy brief 2018 (6-12% per year after heavy traffic on wet "
-               "soil; subsoil damage lasts for decades). Both need calibration.")
+    with st.popover("How is this calculated?"):
+        st.caption("Year 1 anchor: Håkansson multi-site study (10-12 t axle ~15% year-1 loss); lighter classes "
+                   "interpolated. Long-term part: RECARE policy brief 2018 (6-12% per year after heavy traffic on wet "
+                   "soil; subsoil damage lasts for decades). Both need calibration.")
     ui.show_origin(e["origin"], False)

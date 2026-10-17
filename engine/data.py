@@ -177,6 +177,18 @@ def load_farm(holding_id: str = "FARM-13525") -> pd.DataFrame:
     return out.sort_values("parcel_id").reset_index(drop=True)
 
 
+def load_parcel_shapes(holding_id: str = "FARM-13525") -> pd.DataFrame:
+    """Parcel outlines in the dataset's local metric grid: parcel_id, xs, ys (lists of vertex coordinates, m)."""
+    import re
+    p = _table("parcels")
+    p = p[p.holding_id == holding_id]
+    rows = []
+    for r in p.itertuples():
+        nums = [float(v) for v in re.findall(r"-?\d+(?:\.\d+)?", str(r.shape_wkt))]
+        rows.append({"parcel_id": r.parcel_id, "xs": nums[0::2], "ys": nums[1::2]})
+    return pd.DataFrame(rows, columns=["parcel_id", "xs", "ys"])
+
+
 def load_regional_soil(nuts3: str = "PL418") -> dict:
     """Regional SoilGrids topsoil (origin: modelled) as parcel-style texture: clay %, sand %, OM % (OC x 1.724)."""
     s = _table("regional_soil")
