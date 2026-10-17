@@ -81,9 +81,8 @@ def render_decision(farm=None, selected=None, real: bool = False, height: int = 
     """Today: show where you can go, then pick a plot. Stub mode uses the demo picture."""
     import streamlit as st
 
-    st.markdown("**Which plot can you go on?**")
     st.caption("Green = go · yellow = only with care · red = stay off. "
-               "Pick a plot in the list above to see the verdict for that field.")
+               "The machine above is the one used to colour the fields.")
     fig = None
     if real and farm is not None and "status" in getattr(farm, "columns", []):
         fig = figure(farm, height=height, selected=selected)

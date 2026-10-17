@@ -46,18 +46,20 @@ def assess(parcel, date, machine, load, passes, operation, observation, custom, 
 
 farm = parcels(st.session_state["farm"])
 label = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
-c = st.columns([3, 1.4, 2.4, 1.6, 1])
-parcel = ui.pick(c[0], "selectbox", "Plot", "parcel", list(farm.parcel_id), format_func=label.get)
-operation = ui.pick(c[1], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
-machine = ui.pick(c[2], "selectbox", "Machine", "machine", list(prm.MACHINES),
-                         format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
-load = ui.pick(c[3], "slider", "Load (%)", "load", min_value=0, max_value=100)
-passes = c[4].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
-c2 = st.columns([3, 1.4, 1.6])
-observation = c2[0].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
-                               help="A hand test on the wettest spot raises confidence")
+top = st.columns([3, 2])
+parcel = ui.pick(top[0], "selectbox", "Plot", "parcel", list(farm.parcel_id), format_func=label.get)
+observation = top[1].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
+                                help="A hand test on the wettest spot raises confidence")
+
+st.markdown("**Which plot can you go on?**")
+bar = st.columns([1.4, 2.6, 1.6, 1, 1.5, 1.6])
+operation = ui.pick(bar[0], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
+machine = ui.pick(bar[1], "selectbox", "Machine", "machine", list(prm.MACHINES),
+                  format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
+load = ui.pick(bar[2], "slider", "Load (%)", "load", min_value=0, max_value=100)
+passes = bar[3].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
 custom = None
-with c2[1].popover("Use my own machine"):
+with bar[4].popover("Use my own machine"):
     use_custom = st.checkbox("Use my machine instead of the profile", key="use_custom")
     cm_name = st.text_input("Name", "My tractor + drill", key="cm_name")
     cm_axle = st.number_input("Max axle load at this load (t)", 0.5, 20.0, 6.0, 0.5, key="cm_axle",
@@ -65,18 +67,19 @@ with c2[1].popover("Use my own machine"):
     if use_custom:
         custom = {"name": cm_name, "axle_t": float(cm_axle)}
 tyre_bar = None
-with c2[2].popover("My tyre pressure (optional)"):
+bd = None
+with bar[5].popover("My tyre pressure (optional)"):
     use_tyre = st.checkbox("Check compaction with my tyre pressure", key="use_tyre",
                            help="Without it FieldGo uses the default table (status x axle load). With it: stress in "
                                 "the soil vs soil strength today, Terranimo-style.")
-    bar = st.number_input("Inflation pressure (bar)", 0.4, 4.0, 1.6, 0.1, key="tyre_bar",
-                          help="Field pressure of the heaviest axle's tyres. Wheel load = axle load / 2.")
+    tyre_p = st.number_input("Inflation pressure (bar)", 0.4, 4.0, 1.6, 0.1, key="tyre_bar",
+                             help="Field pressure of the heaviest axle's tyres. Wheel load = axle load / 2.")
     bd = st.number_input("Subsoil bulk density 30-60 cm (g/cm³, optional)", min_value=1.0, max_value=2.0, value=None,
                          step=0.05, key="subsoil_bd", placeholder="unknown",
                          help="From a soil core or SoilGrids (30-60 cm). Dense glacial subsoils are often 1.6-1.8. "
                               "Without it FieldGo uses a precautionary default strength.")
     if use_tyre:
-        tyre_bar = float(bar)
+        tyre_bar = float(tyre_p)
 
 t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom,
            tyre_bar, float(bd) if (tyre_bar and bd) else None)
