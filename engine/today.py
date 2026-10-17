@@ -92,10 +92,11 @@ def quality_label(score) -> str:
 
 def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, date, machine_id: str,
            load_pct, passes, operation: str = "sowing", observation: str | None = None,
-           custom_machine: dict | None = None) -> dict:
+           custom_machine: dict | None = None, tyre: dict | None = None) -> dict:
     """Pure Today assessment from the parcel's soil-water table and the regional weather.
 
     custom_machine: {"name": str, "axle_t": max axle load in t at the current load} (spec 6.1 custom form).
+    tyre: {"inflation_bar": float} -> adds a tyre-based compaction check (engine.compaction); the status is unchanged.
     """
     classify_day, axle_load_class, source = _status_fns()
     d = pd.Timestamp(date)
@@ -114,8 +115,9 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
         if dd not in sw.index or dd not in wx.index:
             return None
         r, w = sw.loc[dd], wx.loc[dd]
+        kw = {"taw_mm": parcel.get("taw_mm")} if source == "engine.status" and parcel.get("taw_mm") is not None else {}
         c = classify_day(float(r.RWC_eff), float(parcel.clay_pct), float(parcel.sand_pct), float(r.rain_today_mm),
-                         float(r.rain_prev24h_mm), float(r.tmax_c), lc, n_pass, operation)
+                         float(r.rain_prev24h_mm), float(r.tmax_c), lc, n_pass, operation, **kw)
         s_suit, suit_reasons = suitability(operation, float(r.rain_today_mm), float(w.tmax_c), float(w.wind_m_s))
         s_suit = _worse(s_suit, c.get("suitability", "GO"))         # respect Mirela's suitability rule too
         return {"access": c["access"], "suitability": s_suit, "status": _worse(c["access"], s_suit),
@@ -153,7 +155,33 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
         "load_class": lc, "axle_load_t": axle, "machine_id": machine_id, "parcel_id": parcel.parcel_id,
         "load_pct": load_pct, "passes": passes, "crop": parcel.get("crop"), "area_ha": parcel.get("area_ha"),
         "date": d, "operation": operation, "status_source": source, "origin": "modelled",
-    }
+    } | _tyre_check(tyre, axle, parcel, sw, wx, strip)
+
+
+def _tyre_check(tyre, axle, parcel, sw, wx, strip) -> dict:
+    """Tyre-based compaction check for today and the 72-h strip (only when the inflation pressure is given)."""
+    if not tyre or tyre.get("inflation_bar") in (None, ""):
+        return {}
+    from engine import compaction
+    wheel = float(axle) / prm.COMPACTION["wheels_per_axle"].value
+    bar = float(tyre["inflation_bar"])
+    soil = dict(clay_pct=parcel.get("clay_pct"), sand_pct=parcel.get("sand_pct"), om_pct=parcel.get("om_pct"))
+
+    def at(dd):
+        if dd not in sw.index or dd not in wx.index:
+            return None
+        return compaction.check(wheel, bar, rwc_eff=float(sw.loc[dd].RWC_eff), tmax_c=float(wx.loc[dd].tmax_c), **soil)
+
+    days = [s_["date"] for s_ in strip]
+    now = at(days[0]) or compaction._not_assessed("No weather or soil-water data for this date.")
+    now = now | {"wheel_load_t": wheel, "inflation_bar": bar}
+    if now["assessed"]:
+        r = sw.loc[days[0]]
+        now["levers"] = compaction.levers(wheel, bar, rwc_eff=float(r.RWC_eff), tmax_c=float(r.tmax_c), **soil)
+    later = [(dd, at(dd)) for dd in days]
+    now["strip72"] = [{"date": dd, "subsoil": (c["subsoil"] if c else NA), "overall": (c["overall"] if c else NA)}
+                      for dd, c in later]
+    return {"compaction": now}
 
 
 # --------------------------------------------------------------------------- contract function (loads data)
@@ -166,7 +194,8 @@ def _farm_inputs(data_dir: str, holding_id: str, nuts3: str):
 
 
 def today(parcel_id: str, date, machine_id: str = "M2", load_pct=100, passes=1, operation: str = "sowing",
-          observation: str | None = None, holding_id: str | None = None, custom_machine: dict | None = None) -> dict:
+          observation: str | None = None, holding_id: str | None = None, custom_machine: dict | None = None,
+          tyre: dict | None = None) -> dict:
     import config
     holding_id = holding_id or prm.DEMO["holding_id"].value
     farm, wx, sw = _farm_inputs(str(config.get_data_dir()), holding_id, prm.DEMO["nuts3"].value)
@@ -174,4 +203,4 @@ def today(parcel_id: str, date, machine_id: str = "M2", load_pct=100, passes=1, 
     if hit.empty:
         raise ValueError(f"Parcel {parcel_id} is not on holding {holding_id}")
     return assess(sw[sw.parcel_id == parcel_id], wx, hit.iloc[0], date, machine_id, load_pct, passes, operation,
-                  observation=observation, custom_machine=custom_machine)
+                  observation=observation, custom_machine=custom_machine, tyre=tyre)

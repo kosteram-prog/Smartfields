@@ -274,3 +274,15 @@ def entry_cost(status: str, load_class: str, crop: str, area_ha: float, params: 
     eur = pct / 100.0 * share * float(area_ha) * float(yld) * float(prc)
     return out | {"eur": round(eur, 0), "loss_pct": pct, "trafficked_share": share,
                   "trafficked_ha": round(share * float(area_ha), 2), "yield_t_ha": yld, "price_eur_t": prc}
+
+
+def entry_cost_tyre(check: dict, load_class: str, crop: str, area_ha: float, params: dict | None = None) -> dict:
+    """'If you go now' with the farmer's tyre pressure (17 Oct, proposed): the tyre-based compaction class picks the
+    row of the 6.8.3 table (green -> EUR 0, yellow -> CAUTION row, red -> NO-GO row); the load class stays the column.
+    """
+    if not check or not check.get("assessed"):
+        return {"eur": NA, "loss_pct": NA, "method": "tyre", "unit": "EUR", "origin": "synthetic+assumption",
+                "label": "illustrative, needs calibration",
+                "message": (check or {}).get("reason", "Tyre check not available.")}
+    out = entry_cost(check["cost_row"], load_class, crop, area_ha, params)
+    return out | {"method": "tyre", "compaction_class": check["overall"]}

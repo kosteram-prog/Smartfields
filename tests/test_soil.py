@@ -52,9 +52,34 @@ def test_saxton_rawls_reference_values():
 
 def test_add_hydraulics_mm_for_30_cm_layer():
     p = parcels(dict(parcel_id="A", sand_pct=15.0, clay_pct=54.8, om_pct=2.5))
-    assert p.fc_mm.iloc[0] == pytest.approx(0.4373 * 300, abs=0.7)
+    assert p.fc_mm.iloc[0] == pytest.approx(float(soil.field_capacity(15.0, 54.8, 2.5)) * 300, abs=1e-6)
     assert p.wp_mm.iloc[0] == pytest.approx(0.3207 * 300, abs=0.7)
     assert (p.taw_mm == p.fc_mm - p.wp_mm).all()
+
+
+# ---------------------------------------------------------------- field capacity at -10 kPa (decision 17 Oct)
+def test_bucket_field_capacity_is_european_minus_10_kpa():
+    assert soil.prm.SAXTON_RAWLS["fc_kpa"].value == 10
+
+
+@pytest.mark.parametrize("sand, clay, om", [(15.0, 54.8, 2.5), (77.6, 8.0, 1.5), (40.0, 20.0, 2.0), (90.0, 3.0, 1.0)])
+def test_field_capacity_extends_the_saxton_rawls_power_law(sand, clay, om):
+    import math
+    wp, t33 = (float(x) for x in soil.saxton_rawls(sand, clay, om))
+    b = math.log(1500 / 33) / math.log(t33 / wp)                 # psi = A theta^-B through 33 and 1500 kPa
+    expected = t33 * (33 / 10) ** (1 / b)
+    fc10 = float(soil.field_capacity(sand, clay, om, kpa=10))
+    assert fc10 == pytest.approx(min(expected, float(soil.saturation(sand, clay, om))))
+    assert t33 < fc10 < float(soil.saturation(sand, clay, om))
+    assert float(soil.field_capacity(sand, clay, om, kpa=33)) == pytest.approx(t33)
+
+
+def test_field_capacity_never_above_saturation_for_all_textures():
+    s, c = np.meshgrid(np.arange(5, 91, 5), np.arange(5, 61, 5))
+    mask = (s + c) <= 100
+    fc = soil.field_capacity(s[mask], c[mask], 2.0)
+    assert (fc <= soil.saturation(s[mask], c[mask], 2.0) + 1e-12).all()
+    assert (fc > soil.saxton_rawls(s[mask], c[mask], 2.0)[1]).all()
 
 
 def test_missing_texture_gives_not_available_not_zero():
@@ -156,3 +181,51 @@ def test_real_october_2016_bands_match_pre_event_table():
     assert 0.95 < rwc(clay, 13) <= 1.00 and 0.95 < rwc(sand, 13) <= 1.00      # clay L2 CAUTION / L3 NO-GO, sand L2 GO
     assert 0.85 < rwc(clay, 14) <= 0.95 and rwc(sand, 14) <= 0.95            # 14 Oct: clay CAUTION/CAUTION, sand GO/GO
     assert rwc(clay, 12) > 1.00 and 1.00 < rwc(sand, 12) <= 1.05             # 12 Oct: clay NO-GO, sand CAUTION
+
+
+# ---------------------------------------------------------------- option: FAO-56 two-stage evaporation (17 Oct)
+def test_fao56_tew_rew_from_texture():
+    p = parcels(dict(parcel_id="S", sand_pct=88.0, clay_pct=4.0, om_pct=1.0),
+                dict(parcel_id="C", sand_pct=15.0, clay_pct=50.0, om_pct=3.0))
+    tew, rew = soil.fao56_tew_rew(p)
+    ze = soil.prm.FAO56["ze_m"].value
+    th_fc, th_wp = p.fc_mm / 300.0, p.wp_mm / 300.0
+    assert tew == pytest.approx(list(1000 * (th_fc - 0.5 * th_wp) * ze))
+    assert rew[0] < rew[1] and (np.asarray(rew) < np.asarray(tew)).all()
+
+
+def test_default_model_is_unchanged_beta():
+    assert soil.prm.BUCKET["evaporation_model"].value == "beta"
+    p, w = parcels(), weather([0] * 40)
+    assert soil.soil_water(p, w).W_mm.equals(soil.soil_water(p, w, evaporation="beta").W_mm)
+
+
+def test_fao56_equals_beta_outside_bare_soil_months():
+    p, w = parcels(), weather([0] * 30, start="2016-06-01")                       # June: crop transpires
+    a, b = soil.soil_water(p, w), soil.soil_water(p, w, evaporation="fao56")
+    assert np.allclose(a.W_mm, b.W_mm)
+
+
+def test_fao56_stage_one_then_slower_and_never_beyond_tew():
+    p, w = parcels(), weather([0] * 60, start="2016-01-01")                       # January: bare soil, ET0 1 mm/d
+    tew, rew = (float(x[0]) for x in soil.fao56_tew_rew(p))
+    a = soil.soil_water(p, w).W_mm.to_numpy()
+    b = soil.soil_water(p, w, evaporation="fao56").W_mm.to_numpy()
+    fc = float(p.fc_mm[0])
+    k = int(rew) - 1
+    assert b[k] == pytest.approx(a[k])                                            # stage 1: energy-limited
+    assert b[-1] > a[-1]                                                          # stage 2: slower drying
+    assert fc - b[-1] <= tew + 1e-9                                               # surface layer only
+
+
+def test_fao56_rain_restarts_stage_one():
+    p = parcels()
+    rain = [0] * 30 + [15] + [0] * 3
+    b = soil.soil_water(p, weather(rain, start="2016-01-01"), evaporation="fao56").W_mm.to_numpy()
+    assert b[28] - b[29] < 1.0 - 1e-6                                             # stage 2 before the rain
+    assert b[31] - b[32] == pytest.approx(1.0)                                    # full ET0 again after rain
+
+
+def test_unknown_evaporation_model_raises():
+    with pytest.raises(ValueError):
+        soil.soil_water(parcels(), weather([0] * 5), evaporation="xyz")

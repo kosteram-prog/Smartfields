@@ -4,7 +4,7 @@ import streamlit as st
 
 import config
 import ui
-from components import go_now_line, mark_done, money_line, plan_card, zones_panel
+from components import compaction_panel, go_now_line, mark_done, money_line, plan_card, zones_panel
 from engine import params as prm
 
 replay = ui.shell("Today")
@@ -28,8 +28,9 @@ else:
 
 
 @st.cache_data
-def assess(parcel, date, machine, load, passes, operation, observation, custom):
-    kw = {"observation": observation, "custom_machine": custom} if REAL else {}
+def assess(parcel, date, machine, load, passes, operation, observation, custom, tyre_bar=None):
+    kw = {"observation": observation, "custom_machine": custom,
+          "tyre": {"inflation_bar": tyre_bar} if tyre_bar else None} if REAL else {}
     return run_today(parcel, date, machine, load, passes, operation, **kw)
 
 
@@ -43,7 +44,7 @@ machine = c[2].selectbox("Machine", list(prm.MACHINES), index=1,
                          format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
 load = c[3].slider("Load (%)", 0, 100, 100)
 passes = c[4].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
-c2 = st.columns([3, 2])
+c2 = st.columns([3, 1.4, 1.6])
 observation = c2[0].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
                                help="A hand test on the wettest spot raises confidence")
 custom = None
@@ -54,8 +55,18 @@ with c2[1].popover("Use my own machine"):
                               help="Heaviest axle with the current load (weighbridge or manufacturer data)")
     if use_custom:
         custom = {"name": cm_name, "axle_t": float(cm_axle)}
+tyre_bar = None
+with c2[2].popover("My tyre pressure (optional)"):
+    use_tyre = st.checkbox("Check compaction with my tyre pressure", key="use_tyre",
+                           help="Without it FieldGo uses the default table (status x axle load). With it: stress in "
+                                "the soil vs soil strength today, Terranimo-style.")
+    bar = st.number_input("Inflation pressure (bar)", 0.4, 4.0, 1.6, 0.1, key="tyre_bar",
+                          help="Field pressure of the heaviest axle's tyres. Wheel load = axle load / 2.")
+    if use_tyre:
+        tyre_bar = float(bar)
 
-t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom)
+t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom,
+           tyre_bar)
 stub = not REAL
 
 left, right = st.columns([1, 2])
@@ -115,6 +126,7 @@ with right:
         st.caption("Missing: " + "; ".join(t["missing"]))
         st.markdown(f"**Best next check:** {t['best_next_check']}")
         ui.show_origin("assumption", stub)
+    compaction_panel.render(t)
 
 if REAL and t["status"] in ("GO", "CAUTION", "NO-GO"):
     with st.expander("Explain in plain words"):

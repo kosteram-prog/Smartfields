@@ -100,11 +100,13 @@ def test_status_table_matches_classify_day_row_by_row():
 
 
 # ---------------------------------------------------------------- demo (spec 10, pre-event table)
+# FC at -10 kPa (17 Oct): the two demo parcels keep their pre-event statuses; 0149917 (clay 39%, OM 6.6%) is one
+# step drier on 8, 12, 13 and 14 Oct (pre-event: NO-GO/NO-GO, NO-GO/NO-GO, CAUTION/NO-GO, CAUTION/CAUTION).
 EXPECTED = {   # date: (0149869 clay 55%, 0149906 sand 78%, 0149917 clay 39%) as "L2/L3"
-    "2016-10-08": ("NO-GO/NO-GO", "CAUTION/CAUTION", "NO-GO/NO-GO"),
-    "2016-10-12": ("NO-GO/NO-GO", "CAUTION/CAUTION", "NO-GO/NO-GO"),
-    "2016-10-13": ("CAUTION/NO-GO", "GO/CAUTION", "CAUTION/NO-GO"),
-    "2016-10-14": ("CAUTION/CAUTION", "GO/GO", "CAUTION/CAUTION"),
+    "2016-10-08": ("NO-GO/NO-GO", "CAUTION/CAUTION", "GO/GO"),
+    "2016-10-12": ("NO-GO/NO-GO", "CAUTION/CAUTION", "CAUTION/NO-GO"),
+    "2016-10-13": ("CAUTION/NO-GO", "GO/CAUTION", "CAUTION/CAUTION"),
+    "2016-10-14": ("CAUTION/CAUTION", "GO/GO", "GO/CAUTION"),
     "2016-10-15": ("NO-GO/NO-GO", "NO-GO/NO-GO", "NO-GO/NO-GO"),
     "2016-10-17": ("CAUTION/NO-GO", "GO/CAUTION", "CAUTION/NO-GO"),
 }
@@ -123,3 +125,28 @@ def test_real_october_2016_demo_statuses():
         got = tuple(f"{l2[(pd.Timestamp(d), p)]}/{l3[(pd.Timestamp(d), p)]}"
                     for p in ("PARCEL-0149869", "PARCEL-0149906", "PARCEL-0149917"))
         assert got == exp, (d, got, exp)
+
+
+# ---------------------------------------------------------------- nuance 17 Oct: SMD >= 10 mm for heavy traffic
+def test_heavy_traffic_needs_a_10_mm_soil_moisture_deficit():
+    rule = status.prm.SMD_RULE
+    assert rule["go_min_smd_mm"].value == 10 and rule["classes"].value == ("L5",)
+    args = (LOAM["clay_pct"], LOAM["sand_pct"], 0.0, 0.0, 12.0)
+    small = status.classify_day(0.70, *args, "L5", taw_mm=25.0)                  # SMD 7.5 mm
+    big = status.classify_day(0.70, *args, "L5", taw_mm=50.0)                    # SMD 15 mm
+    assert small["status"] == "CAUTION" and big["status"] == "GO"
+    assert any("Vero" in r for r in small["reasons"])
+    assert status.classify_day(0.70, *args, "L5")["status"] == "GO"               # no TAW given: rule not applied
+    assert status.classify_day(0.70, *args, "L2", taw_mm=25.0)["status"] == "GO"  # light traffic: not applied
+
+
+def test_smd_rule_never_makes_a_status_better_and_table_matches():
+    args = (LOAM["clay_pct"], LOAM["sand_pct"], 0.0, 0.0, 12.0)
+    for rwc in np.arange(0.5, 1.2, 0.02):
+        a = status.classify_day(rwc, *args, "L5")["status"]
+        b = status.classify_day(rwc, *args, "L5", taw_mm=30.0)["status"]
+        assert RANK[b] >= RANK[a]
+    sw = pd.DataFrame({"parcel_id": ["A", "B"], "date": pd.to_datetime(["2016-10-13"] * 2), "RWC_eff": [0.70, 0.70],
+                       "rain_today_mm": 0.0, "rain_prev24h_mm": 0.0, "tmax_c": 12.0})
+    parcels = pd.DataFrame({"parcel_id": ["A", "B"], "clay_pct": 20.0, "sand_pct": 40.0, "taw_mm": [25.0, 50.0]})
+    assert list(status.status_table(sw, parcels, "L5").status) == ["CAUTION", "GO"]

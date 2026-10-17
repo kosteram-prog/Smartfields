@@ -96,6 +96,15 @@ SAXTON_RAWLS = {
     "theta33t": P(dict(S=-0.251, C=0.195, OM=0.011, S_OM=0.006, C_OM=-0.027, S_C=0.452, const=0.299),
                   "m3/m3", "Saxton & Rawls 2006, SSSAJ 70:1569"),
     "theta33_adj": P(dict(a=1.283, b=-0.374, c=-0.015), "", "Saxton & Rawls 2006 (field capacity)"),
+    "thetaS33t": P(dict(S=0.278, C=0.034, OM=0.022, S_OM=-0.018, C_OM=-0.027, S_C=-0.584, const=0.078),
+                   "m3/m3", "Saxton & Rawls 2006 eq. 3 (moisture between saturation and 33 kPa)"),
+    "thetaS33_adj": P(dict(a=0.636, b=-0.107), "", "Saxton & Rawls 2006 eq. 3"),
+    "thetaS_sand": P(dict(a=-0.097, b=0.043), "", "Saxton & Rawls 2006 eq. 5: theta_S = theta33 + theta_S33 - 0.097 S + 0.043"),
+    # Decision 17 Oct (Marek): field capacity at -10 kPa (pF 2.0), the European / Polish convention and Terranimo's.
+    # theta at 10 kPa from the S&R power law psi = A theta^-B through 33 and 1500 kPa (S&R eq. 11-13), capped at
+    # saturation. The S&R linear segment between saturation and 33 kPa was rejected (unrealistic for sands).
+    "fc_kpa": P(10, "kPa", "decision 17 Oct: European FC (pF 2.0); Richards & Weaver 1944 (-10 kPa for sandy soils); "
+                "EU-HYDI / euptf report theta at -100 hPa; Saxton & Rawls 2006 power law extended from 33 to 10 kPa"),
 }
 
 # ---------------------------------------------------------------- 7.2 soil-water bucket
@@ -106,6 +115,21 @@ BUCKET = {
     "saturated_flag_rain_mm": P(10, "mm", "spec 7.2"),
     "transient_k": P(0.1, "", "spec 7.2 (RWC_eff = RWC + k * min(1, P48/ref))"),
     "transient_ref_mm": P(20, "mm", "spec 7.2"),
+    "evaporation_model": P("beta", "", "spec 7.2 default: ETa = ET0 x beta. Option 'fao56' (proposed 17 Oct): two-stage "
+                           "evaporation of FAO-56 ch. 7 in the bare-soil months, see FAO56"),
+}
+# Option for the bucket (17 Oct, PROPOSED; default stays 'beta'): FAO-56 two-stage soil evaporation, Allen et al. 1998,
+# Irrigation and Drainage Paper 56, ch. 7. TEW = 1000 (theta_FC - 0.5 theta_WP) Ze; Kr = 1 while De <= REW, then
+# (TEW - De) / (TEW - REW); E = Kr x ke_max x ET0 (Kr from the previous day's De, as in FAO-56 eq. 74-77).
+FAO56 = {
+    "ze_m": P(0.10, "m", "FAO-56 ch. 7: depth of the evaporating surface layer 0.10-0.15 m"),
+    "rew_mm": P([("sand_min", 85, 4.5), ("sand_min", 70, 6.0), ("sand_min", 50, 8.0), ("clay_min", 40, 10.0),
+                 ("else", None, 9.0)], "mm", "FAO-56 Table 19 (midpoints): sand 2-7, loamy sand 4-8, sandy loam 6-10, "
+                 "loam / silt loam 8-11, clay 8-12; first matching rule wins"),
+    "ke_max": P(1.0, "", "FAO-56 gives Kc_max 1.05-1.30 after wetting; kept at 1.0 so stage 1 equals the default model "
+                "and only the drying curve changes"),
+    "bare_months": P((10, 11, 12, 1, 2, 3), "month", "assumption: Oct-Mar the soil is bare or under young winter "
+                     "cereals (FAO-56 Kcb ini 0.15-0.3); Apr-Sep the crop transpires (default beta model)"),
 }
 
 # ---------------------------------------------------------------- 6.4 trafficability
@@ -118,7 +142,9 @@ THRESHOLDS = {
     "L5": dict(go=P(0.80, "RWC", "spec 6.4"), caution=P(0.90, "RWC", "spec 6.4")),
 }
 TEXTURE_ADJUSTMENT = {
-    "clay_min_pct": P(30, "%", "spec 6.4"), "clay_delta": P(-0.05, "RWC", "spec 6.4"),
+    "clay_min_pct": P(30, "%", "spec 6.4; Obour et al. 2017 (Soil Use Manage.): optimum tillage water ~0.9 x plastic "
+                      "limit and on clays FC exceeds it, so a clay soil at FC is never GO"),
+    "clay_delta": P(-0.05, "RWC", "spec 6.4"),
     "sand_min_pct": P(70, "%", "spec 6.4"), "sand_delta": P(+0.05, "RWC", "spec 6.4"),
 }
 RAIN_OVERRIDES = {
@@ -129,6 +155,13 @@ FROST = {
     "tmax_c": P(0, "degC", "spec 6.4: Tmax <= 0 -> frozen soil"),
     "traffic_go_classes": P(("L1", "L2", "L3"), "", "spec 6.4: frozen soil carries L1-L3 traffic"),
     "fertilising_nogo": P(True, "", "spec 6.4: any fertilising on frozen soil = NO-GO"),
+}
+# Nuance 17 Oct (research review, Marek OK): heavy traffic also needs a soil moisture deficit (SMD = FC - W, here
+# (1 - RWC_eff) x TAW of the 0-30 cm layer) of at least 10 mm before it is GO; otherwise at best CAUTION.
+SMD_RULE = {
+    "go_min_smd_mm": P(10, "mm", "Vero et al. 2014, Soil Use Manage. 30:69-77: SMD >= 10 mm safe for heavy slurry "
+                       "tankers on grassland, no difference between drainage classes (adapted to our 0-30 cm layer)"),
+    "classes": P(("L5",), "", "heavy traffic only (slurry tankers, combines): the machines of the Vero study"),
 }
 PASSES = {"threshold_delta_per_extra_pass": P(-0.03, "RWC", "spec 7.7 / agreed defaults"),
           "max_passes": P(3, "passes", "spec 7.7")}
@@ -306,7 +339,8 @@ SENSITIVITY_VARIANTS = P([
     ("CAUTION = 0 day", "caution_weight", 0.0), ("CAUTION = 1 day", "caution_weight", 1.0),
     ("Rain override today >= 2 mm", "rain_today", 2.0), ("Rain override today >= 10 mm", "rain_today", 10.0),
     ("Previous-24 h override >= 5 mm", "rain_prev24", 5.0),
-], "", "pre-event sensitivity test (bucket-model-test-FARM-13525.md)")
+    ("FAO-56 evaporation (Oct-Mar)", "evaporation", "fao56"),
+], "", "pre-event sensitivity test (bucket-model-test-FARM-13525.md) + FAO-56 option (17 Oct)")
 # Soil of the real field, best source first (17 Oct): measured on the field > SoilGrids 250 m at the field point >
 # regional NUTS3 mean (in the extracts). Fill a level with {"clay_pct", "sand_pct", "om_pct"} when you have it.
 REAL_FIELD_SOIL = {
@@ -314,4 +348,38 @@ REAL_FIELD_SOIL = {
     "soilgrids_point": P(None, "%", "SoilGrids 2.0 250 m at the field centroid 16.64442 E, 52.59934 N, 0-30 cm "
                          "(ISRIC REST blocks automated download; enter by hand from soilgrids.org)", "modelled"),
     "centroid": P((16.64442, 52.59934), "lon, lat", "computed from pole-gasawy/gasawy_28.geojson (GUGiK ULDK)", "real"),
+}
+
+# ---------------------------------------------------------------- PROPOSED 17 Oct: tyre-based compaction check
+# Simplified Terranimo-style chain (engine/compaction.py). Used only when the farmer enters the tyre inflation
+# pressure; otherwise the 6.8.3 table (status x load class) stays the default. Not agreed yet: Marek + Mirela to OK.
+_TN = "Terranimo introduction note (terranimo.dk, Schjønning, Lamandé, Lassen et al.)"
+COMPACTION = {
+    "wheels_per_axle": P(2, "wheels", "assumption: single tyres, one wheel at each end of the axle"),
+    "carcass_kpa": P(15, "kPa", "assumption: mean ground pressure = inflation pressure + carcass stiffness. FRIDA "
+                     "example 710/70R42 at 4.3 t: 53-75 kPa at 40-80 kPa inflation (-5...+13 kPa); measured MGP was "
+                     "~36% above Terranimo (Calleja-Huerta et al. 2023, STR 233:105790) -> kept on the safe side"),
+    "depths_m": P((0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8), "m", _TN + ": report depths"),
+    "topsoil_max_m": P(0.25, "m", _TN + ": strength 67 kPa at 0.1-0.2 m (plough layer), 76 kPa at 0.3-0.8 m"),
+    "nu_by_pf": P(((1.7, 6.0), (2.0, 5.0), (2.7, 4.0), (4.2, 3.0)), "",
+                  _TN + ": Söhne (1953) concentration factor by pF (soft / firm / hard / wilting); linear in between"),
+    "pf_min": P(1.0, "pF", "assumption: wettest state used (RWC_eff above 1 after rain)"),
+    "pf_max": P(4.2, "pF", "permanent wilting point"),
+    "pc_ref_kpa": P({"topsoil": 67.0, "subsoil": 76.0}, "kPa",
+                    _TN + ": soil strength (precompression stress) at pF 2, typical bulk density; independent of clay"),
+    "pc_clay_pf_slope": P(0.0294, "log10 kPa per % clay per pF unit",
+                          "fitted to the 4 anchor points of the " + _TN + " (300 kPa at pF 4.2 / 3.1 and 20 kPa at "
+                          "pF 0.2 / 1.1 for 10 / 20% clay); approximates, but is not, the Terranimo PTF"),
+    "clay_calibrated_pct": P((4.0, 20.0), "%", "Danish strength data 4-17% clay, anchors at 10 and 20%: outside, clay "
+                             "is capped and the result is flagged"),
+    "sci_yellow_max": P(0.18, "SCI", _TN + ": SCI = log10(stress/strength); green <= 0, yellow up to 1.5 x strength "
+                        "(~0.18), red above. (Terranimo light, Stettler et al. 2014, uses 50% / 110% borders.)"),
+    "rule_stress_kpa": P(50.0, "kPa", "Schjønning et al. 2012 (Soil Use Manage.), cited by Calleja-Huerta et al. "
+                         "2023: below 50 kPa at 50 cm minimises the risk of subsoil compaction"),
+    "rule_depth_m": P(0.5, "m", "Schjønning et al. 2012 (see rule_stress_kpa)"),
+    "min_field_bar": P(0.8, "bar", "assumption: lowest field pressure we suggest; the tyre's load/pressure table rules"),
+    "pressure_step_bar": P(0.1, "bar", "search step for the 'lower tyre pressure' lever"),
+    "class_to_cost_row": P({"green": "GO", "yellow": "CAUTION", "red": "NO-GO"}, "",
+                           "proposed: the subsoil class (persistent damage) picks the row of the 6.8.3 table, the "
+                           "axle-load class the column; tilled topsoil is usually above its strength (Terranimo note)"),
 }

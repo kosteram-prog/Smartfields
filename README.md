@@ -19,7 +19,8 @@ Demo: farm **FARM-13525** (PL415, Poznań region), **replay mode**: historical A
 | Module | What it does | Spec |
 |---|---|---|
 | `engine/data.py` | Extracts the needed rows from the organisers' zip into small Parquet files; cached loaders | 7.1 |
-| `engine/soil.py` | Saxton & Rawls (2006) field capacity / wilting point; daily 0-30 cm soil-water bucket; RWC and RWC_eff | 6.3, 7.2 |
+| `engine/soil.py` | Saxton & Rawls (2006) wilting point and field capacity at -10 kPa (pF 2.0, European convention; S&R power law extended from 33 kPa); daily 0-30 cm soil-water bucket; RWC and RWC_eff; optional FAO-56 two-stage evaporation | 6.3, 7.2 |
+| `engine/compaction.py` | Optional tyre-based compaction check (simplified Terranimo-style: contact pressure, Söhne/Fröhlich stress, strength from clay and pF, 50 kPa at 50 cm) | 17 Oct |
 | `engine/status.py` | Day status GO / CAUTION / NO-GO per parcel, machine load class and passes | 6.4, 7.3 |
 | `engine/season.py` | Season simulation: parcel priority, day-by-day allocation, P(finish by deadline), contractor recommendation, sensitivity | 7.4-7.6 |
 | `engine/cost.py` | Cost of delay (late-start and weather parts), contractor value, "if you wait", "if you go now" (wet traffic, illustrative) | 6.8, 6.8.3, 7.5, 7.15 |

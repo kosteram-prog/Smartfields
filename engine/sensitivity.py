@@ -38,6 +38,8 @@ def _override(kind, value):
     elif kind == "rain_today":
         r = prm.RAIN_OVERRIDES
         put(r, "rain_today_nogo_mm", replace(r["rain_today_nogo_mm"], value=value))
+    elif kind == "evaporation":
+        put(prm.BUCKET, "evaporation_model", replace(prm.BUCKET["evaporation_model"], value=value))
     elif kind == "rain_prev24":
         r = prm.RAIN_OVERRIDES
         put(r, "rain_prev24h_caution_mm", replace(r["rain_prev24h_caution_mm"], value=value))

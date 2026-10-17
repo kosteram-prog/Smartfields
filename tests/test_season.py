@@ -150,7 +150,8 @@ def test_farm_without_autumn_sowing_gives_message_not_error():
 
 
 # ---------------------------------------------------------------- real data (needs the extracts)
-REF = ["10-09", "10-22", "10-16", "10-09", "10-16", "10-16", "10-10", "10-09", "10-13", "10-11"]
+# FC at -10 kPa (decision 17 Oct). Pre-event reference with FC -33 kPa: 09, 22, 16, 09, 16, 16, 10, 09, 13, 11 Oct, P 0.6
+REF = ["10-09", "10-17", "10-16", "10-09", "10-15", "10-11", "10-10", "10-09", "10-13", "10-11"]
 
 
 @pytest.fixture(scope="module")
@@ -167,7 +168,7 @@ def test_real_reference_completion_and_p(real):
     got = [comp[y].strftime("%m-%d") for y in range(2015, 2025)]
     off = [abs((pd.Timestamp(f"2000-{g}") - pd.Timestamp(f"2000-{r}")).days) for g, r in zip(got, REF)]
     assert max(off) <= 1, list(zip(range(2015, 2025), got, REF))
-    assert res["P_by_deadline"]["value"] == pytest.approx(0.6)
+    assert res["P_by_deadline"]["value"] == pytest.approx(0.8)
     assert runtime < 10
 
 
@@ -176,7 +177,7 @@ def test_real_contractor_and_sensitivity(real):
     res, _ = real
     rec = res["contractor_recommendation"]
     assert rec["extra_ha_day"] == 5 and rec["p_with"] >= 0.9
-    assert res["sensitivity"][0.5] == pytest.approx(0.6) and res["sensitivity"][1.0] >= res["sensitivity"][0.0]
+    assert res["sensitivity"][0.5] == pytest.approx(0.8) and res["sensitivity"][1.0] >= res["sensitivity"][0.0]
 
 
 @pytest.mark.needs_data
@@ -184,8 +185,9 @@ def test_real_three_workable_days_early_october_2016(real):
     res, _ = real
     wd = res["workable_days"]
     oct16 = wd[(wd.date >= "2016-10-01") & (wd.date <= "2016-10-21")]
-    assert (oct16.share_go_parcels >= 0.5).sum() == 3      # pre-event number (counted by parcels)
-    assert (oct16.share_go >= 0.5).sum() in (2, 3)         # by area 14 Oct is 46%: borderline
+    # FC at -10 kPa (17 Oct): 8 by parcels, 7 by area (1-2 Oct and 7-11 Oct, 14 Oct). Pre-event (FC -33 kPa): 3.
+    assert (oct16.share_go_parcels >= 0.5).sum() == 8
+    assert (oct16.share_go >= 0.5).sum() == 7
 
 
 def test_custom_parcel_order_is_followed():

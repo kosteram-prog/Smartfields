@@ -25,10 +25,13 @@ def test_safer_plan_is_never_worse_than_the_input(parcel, machine, load):
 
 @pytest.mark.needs_data
 def test_demo_other_parcel_today_is_the_sandy_parcel_go():
-    # spec 10: clay parcel with the M2 drill is CAUTION; the sandy parcel 0149906 with M2 is GO
+    # spec 10: clay parcel with the M2 drill is CAUTION; other parcels are GO with M2 today. Since FC at -10 kPa
+    # (17 Oct) the highest-priority GO parcel is 0149898 (clay 30%); the sandy 0149906 is GO and listed as well.
     plans = {p["lever"]: p for p in plan.safer_plan("PARCEL-0149869", "2016-10-13", "M2", 100, 1)}
     other = plans["other parcel today"]
-    assert other["status"] == "GO" and other["parcel_id"] == "PARCEL-0149906"
+    assert other["status"] == "GO"
+    shown = {other["parcel_id"]} | {a["parcel_id"] for a in other["alternatives"] if a["status"] == "GO"}
+    assert "PARCEL-0149906" in shown
 
 
 @pytest.mark.needs_data
@@ -39,12 +42,18 @@ def test_heavy_m3_gets_a_better_plan_even_without_any_go_today():
 
 @pytest.mark.needs_data
 def test_spec_10_story_lighter_machine_then_sandy_parcel():
-    # M3 full on clay = NO-GO; the M2 drill makes it CAUTION; M2 on the sandy parcel is GO (recommended)
+    # M3 full on clay = NO-GO; the M2 drill makes it CAUTION. Since FC at -10 kPa (17 Oct) the recommended plan is
+    # the same M3 on a light parcel (GO, EUR 0); M2 on another parcel is GO too (sandy 0149906 among the options).
     plans = plan.safer_plan("PARCEL-0149869", "2016-10-13", "M3", 100, 1)
     by = {p["lever"]: p for p in plans}
     assert by["lighter machine"]["machine_id"] == "M2" and by["lighter machine"]["status"] == "CAUTION"
+    first = plans[0]
+    assert first["lever"] == "other parcel today" and first["status"] == "GO" and first["cost"]["eur"] == 0
+    from engine import data
+    clay = data.load_farm("FARM-13525").set_index("parcel_id").clay_pct
+    assert clay[first["parcel_id"]] < 10                                                  # a light, sandy parcel
     combo = by["lighter machine, other parcel"]
-    assert combo["status"] == "GO" and combo["parcel_id"] == "PARCEL-0149906" and plans[0] is combo
+    assert combo["status"] == "GO" and "PARCEL-0149906" in {combo["parcel_id"]} | {a["parcel_id"] for a in combo["alternatives"]}
     assert isinstance(combo["cost"]["eur"], float) and combo["cost"]["eur"] >= 0       # M2 is slower than M3
 
 

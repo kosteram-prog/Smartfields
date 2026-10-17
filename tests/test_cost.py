@@ -66,7 +66,7 @@ def test_11_missing_yield_or_price_is_not_available_never_zero():
 @pytest.mark.needs_data
 def test_real_wait_cost_demo_day_and_no_go_day():
     w = cost.wait_cost("2016-10-13", {})
-    assert 1000 <= w["eur"] <= 2500                                          # pre-event ~ EUR 1.7k
+    assert 500 <= w["eur"] <= 1100      # FC at -10 kPa (17 Oct): ~EUR 790; pre-event (FC -33 kPa) ~EUR 1.7k
     assert cost.wait_cost("2016-10-15", {})["eur"] == 0                       # nothing workable: waiting is free
 
 

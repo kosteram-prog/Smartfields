@@ -20,7 +20,8 @@ st.table(pd.DataFrame([
 ]))
 
 st.subheader("Assumption tables (prototype values, reviewed by the team's agronomists)")
-tabs = st.tabs(["Machines 6.1", "Thresholds 6.4", "Cost of delay 6.8", "Wet traffic 6.8.3", "N check 6.7", "Confidence 7.9"])
+tabs = st.tabs(["Machines 6.1", "Thresholds 6.4", "Cost of delay 6.8", "Wet traffic 6.8.3", "N check 6.7", "Confidence 7.9",
+                "Compaction with tyres"])
 with tabs[0]:
     st.dataframe(pd.DataFrame([{"id": k, "profile": v["profile"], "max axle loaded (t)": v["max_axle_t"].value,
                                 "class at full load": v["load_class"], "work rate (ha/h)": v["rate_ha_h"].value,
@@ -30,9 +31,13 @@ with tabs[0]:
 with tabs[1]:
     st.dataframe(pd.DataFrame([{"class": k, "GO if RWC_eff <=": v["go"].value, "CAUTION if <=": v["caution"].value}
                                for k, v in prm.THRESHOLDS.items()]), hide_index=True)
-    st.caption("Texture: clay >= 30 % -0.05, sand >= 70 % +0.05; each extra pass -0.03; rain today >= 5 mm -> NO-GO; "
+    st.caption("RWC = 1 is field capacity at -10 kPa (pF 2.0, the European convention; Saxton & Rawls 2006 retention "
+               "curve extended from 33 kPa). Texture: clay >= 30 % -0.05, sand >= 70 % +0.05; each extra pass -0.03; rain today >= 5 mm -> NO-GO; "
                ">= 10 mm in the previous 24 h -> at best CAUTION; frozen soil carries L1-L3; no fertilising on frozen "
-               "soil. RWC_eff = RWC + 0.1 x min(1, rain in the last 48 h / 20 mm). Support: Smedema (1979), AHDB.")
+               "soil. RWC_eff = RWC + 0.1 x min(1, rain in the last 48 h / 20 mm). Heavy traffic (L5) also needs a soil "
+               "moisture deficit of at least 10 mm (Vero et al. 2014). Clay soils at field capacity are never GO: "
+               "the optimum water content for tillage is ~0.9 x plastic limit and on clays FC exceeds it (Obour et al. "
+               "2017). Support: Smedema (1979), AHDB.")
 with tabs[2]:
     c = prm.COST
     st.dataframe(pd.DataFrame([{"crop": k, "optimal sowing ends": v.value or "enter manually", "source": v.source}
@@ -62,6 +67,14 @@ with tabs[5]:
                  hide_index=True)
     st.caption("Start at 100 and subtract for each indirect or missing input. A farmer observation (hand test) and "
                "your own machine data raise confidence.")
+with tabs[6]:
+    st.markdown("Optional on the Today page: enter your **tyre inflation pressure** and FieldGo compares the stress "
+                "under the wheel with today's soil strength from 10 to 80 cm (simplified Terranimo-style chain). "
+                "Without it the default table above (status x axle load) is used.")
+    st.dataframe(pd.DataFrame([{"parameter": k.replace("_", " "), "value": str(v.value), "unit": v.unit,
+                                "source": v.source} for k, v in prm.COMPACTION.items()]), hide_index=True)
+    st.caption("Proposed 17 Oct, to be reviewed. Not a replacement for Terranimo (terranimo.dk), which uses measured "
+               "tyre footprints (FRIDA) and its own soil-strength functions.")
 ui.show_origin("assumption", False)
 
 import config  # noqa: E402

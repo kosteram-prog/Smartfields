@@ -8,7 +8,8 @@ Written by Marek's agent for Mirela's slice (agreed 16 Oct 20:22); Mirela review
 
 Rules (all values in params.py):
   1. thresholds on RWC_eff per load class (6.4), texture adjustment (clay >= 30 %: -0.05, sand >= 70 %: +0.05),
-     each extra pass on the same day: -0.03
+     each extra pass on the same day: -0.03; heavy traffic (L5) also needs a soil moisture deficit >= 10 mm
+     (Vero et al. 2014; only when the parcel's TAW is known)
   2. frozen soil (Tmax <= 0 °C): a status set only by soil wetness becomes GO for L1-L3 (frozen soil carries the load)
   3. rain overrides: >= 5 mm today -> NO-GO; >= 10 mm in the previous 24 h -> at best CAUTION
   4. suitability: any fertilising on frozen soil -> NO-GO (other operation rules live in engine.today)
@@ -61,12 +62,18 @@ def _thresholds(load_class, clay, sand, passes):
     return t["go"].value + adj, t["caution"].value + adj
 
 
-def _classify(rwc, clay, sand, rain_today, rain_prev24, tmax, load_class, passes, operation):
+def _classify(rwc, clay, sand, rain_today, rain_prev24, tmax, load_class, passes, operation, taw=None):
     """Vectorised core. Returns dict of arrays: access, suitability, status (ints 0/1/2), risk, plus flags."""
     rwc, clay, sand = (np.asarray(x, dtype=float) for x in (rwc, clay, sand))
     rain_today, rain_prev24, tmax = (np.asarray(x, dtype=float) for x in (rain_today, rain_prev24, tmax))
     go, caution = _thresholds(load_class, clay, sand, passes)
     soil = np.where(rwc <= go, 0, np.where(rwc <= caution, 1, 2))
+    smd = np.full(rwc.shape, np.nan)
+    smd_cap = np.zeros(rwc.shape, dtype=bool)
+    if taw is not None and load_class in prm.SMD_RULE["classes"].value:      # Vero et al. 2014 (nuance 17 Oct)
+        smd = np.clip(1.0 - rwc, 0.0, None) * np.asarray(taw, dtype=float)
+        smd_cap = (soil == 0) & (smd < prm.SMD_RULE["go_min_smd_mm"].value)
+        soil = np.where(smd_cap, 1, soil)
     frozen = tmax <= prm.FROST["tmax_c"].value
     frost_ok = frozen & (load_class in prm.FROST["traffic_go_classes"].value)
     access = np.where(frost_ok, 0, soil)
@@ -80,7 +87,7 @@ def _classify(rwc, clay, sand, rain_today, rain_prev24, tmax, load_class, passes
     risk = np.where(frost_ok & ~rain_nogo, np.minimum(risk, 40), risk)
     risk = np.where(status == 2, np.maximum(risk, FROST_RISK_NOGO_MIN), risk)
     return dict(access=access, suit=suit, status=status, risk=np.round(risk).astype(int), go=go, caution=caution,
-                soil=soil, frost_ok=frost_ok, rain_nogo=rain_nogo, rain_cap=rain_cap, fert_frozen=fert_frozen,
+                soil=soil, smd=smd, smd_cap=smd_cap, frost_ok=frost_ok, rain_nogo=rain_nogo, rain_cap=rain_cap, fert_frozen=fert_frozen,
                 rwc=rwc, clay=clay, sand=sand, rain_today=rain_today, rain_prev24=rain_prev24, tmax=tmax)
 
 
@@ -94,6 +101,9 @@ def _reasons(c: dict, i: int, load_class: str, passes: int) -> list[str]:
         tex = f" on sand {c['sand'][i]:.0f}%"
     r.append(f"Soil water RWC_eff {c['rwc'][i]:.2f} vs GO <= {c['go'][i]:.2f}, CAUTION <= {c['caution'][i]:.2f} "
              f"for {load_class}{tex} -> {soil_word}")
+    if c["smd_cap"][i]:
+        r.append(f"Soil moisture deficit {c['smd'][i]:.1f} mm < {prm.SMD_RULE['go_min_smd_mm'].value:g} mm for heavy "
+                 f"traffic ({load_class}; Vero et al. 2014): at best CAUTION")
     if passes > 1:
         r.append(f"{passes} passes: thresholds {abs(prm.PASSES['threshold_delta_per_extra_pass'].value) * (passes - 1):.2f} stricter")
     if c["frost_ok"][i] and c["soil"][i] > 0:
@@ -108,9 +118,10 @@ def _reasons(c: dict, i: int, load_class: str, passes: int) -> list[str]:
 
 
 def classify_day(rwc_eff, clay_pct, sand_pct, rain_today_mm, rain_prev24h_mm, tmax_c, load_class,
-                 passes=1, operation="sowing") -> dict:
+                 passes=1, operation="sowing", taw_mm=None) -> dict:
+    """taw_mm (optional): TAW of the 0-30 cm layer; enables the SMD rule for heavy traffic (params.SMD_RULE)."""
     c = _classify([rwc_eff], [clay_pct], [sand_pct], [rain_today_mm], [rain_prev24h_mm], [tmax_c],
-                  load_class, passes, operation)
+                  load_class, passes, operation, None if taw_mm is None or pd.isna(taw_mm) else [taw_mm])
     return {"status": str(STATUSES[c["status"][0]]), "access": str(STATUSES[c["access"][0]]),
             "suitability": str(STATUSES[c["suit"][0]]), "risk": int(c["risk"][0]),
             "reasons": _reasons(c, 0, load_class, int(passes)), "origin": ORIGIN}
@@ -123,8 +134,10 @@ def status_table(soil_water_df: pd.DataFrame, parcels: pd.DataFrame, load_class:
     out = soil_water_df.copy()
     clay = out["parcel_id"].map(tex["clay_pct"]).to_numpy(dtype=float)
     sand = out["parcel_id"].map(tex["sand_pct"]).to_numpy(dtype=float)
+    taw = (out["parcel_id"].map(parcels.set_index("parcel_id")["taw_mm"]).to_numpy(dtype=float)
+           if "taw_mm" in parcels.columns else None)
     c = _classify(out["RWC_eff"], clay, sand, out["rain_today_mm"], out["rain_prev24h_mm"], out["tmax_c"],
-                  load_class, passes, operation)
+                  load_class, passes, operation, taw)
     out["status"] = STATUSES[c["status"]]
     out["access"] = STATUSES[c["access"]]
     out["suitability"] = STATUSES[c["suit"]]

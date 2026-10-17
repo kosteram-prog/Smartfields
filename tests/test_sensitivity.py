@@ -18,8 +18,9 @@ def test_override_restores_params():
 @pytest.mark.needs_data
 def test_base_and_key_variants_match_pre_event_table():
     base = sensitivity.run_variant(None, None)
-    assert base["P"] == pytest.approx(0.6) and base["done_2016"] == "22 Oct" and base["contractor"] == 5
-    assert base["workable_days_2016"] == 3 and base["demo_13oct"] == "C/N · G/C"
+    # FC at -10 kPa (17 Oct); pre-event (FC -33 kPa): P 0.6, 22 Oct, 3 workable days, stricter: not done by 30 Nov
+    assert base["P"] == pytest.approx(0.8) and base["done_2016"] == "17 Oct" and base["contractor"] == 5
+    assert base["workable_days_2016"] == 8 and base["demo_13oct"] == "C/N · G/C"
     stricter = sensitivity.run_variant("thresholds", -0.05)
-    assert stricter["done_2016"] == "not done by 30 Nov" and stricter["demo_13oct"] == "N/N · C/C"
+    assert stricter["done_2016"] == "18 Oct" and stricter["demo_13oct"] == "N/N · C/C"
     assert sensitivity.run_variant("caution_weight", 1.0)["P"] == pytest.approx(1.0)
