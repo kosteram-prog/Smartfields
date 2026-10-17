@@ -159,6 +159,8 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
         "conditions_origin": {"rwc_eff": "modelled", "weather": "real"},
         "load_class": lc, "axle_load_t": axle, "machine_id": machine_id, "parcel_id": parcel.parcel_id,
         "load_pct": load_pct, "passes": passes, "crop": parcel.get("crop"), "area_ha": parcel.get("area_ha"),
+        "soil": {k: (float(parcel.get(k)) if parcel.get(k) is not None else None)
+                 for k in ("clay_pct", "sand_pct", "om_pct")},
         "date": d, "operation": operation, "status_source": source, "origin": "modelled",
     } | _tyre_check(tyre, axle, parcel, sw, wx, strip)
 

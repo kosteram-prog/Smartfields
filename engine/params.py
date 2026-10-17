@@ -248,6 +248,29 @@ WET_TRAFFIC_LOSS = {
     },
 }
 
+# Continuous "if you go now" model (decision 17 Oct evening: the 6.8.3 table gave EUR 0 for L1-L2 and ignored how wet
+# the soil is and the tyres). Year 1: anchor x axle factor x tyre factor x wetness factor. Subsoil (long-term): the
+# compaction check's subsoil overstress relative to the anchor case. Illustrative, needs calibration in pilots.
+GO_NOW_MODEL = {
+    "anchor_pct": P(15, "% year-1 yield loss", "Håkansson multi-site study: 10-12 t axle load on wet soil ~15% year 1"),
+    "anchor_axle_t": P(11, "t", "middle of the Håkansson 10-12 t axle anchor"),
+    "axle_exponent": P(1.0, "", "assumption: year-1 loss proportional to axle load (lighter machines still rut and "
+                       "compact the topsoil when it is wet)"),
+    "axle_factor_max": P(1.3, "", "assumption: cap above the anchor (13+ t axles)"),
+    "anchor_bar": P(2.0, "bar", "assumption: typical inflation of the anchor machines"),
+    "tyre_exponent": P(0.5, "", "assumption: contact pressure drives topsoil stress (Terranimo rule of thumb); "
+                       "square root keeps the effect moderate"),
+    "wet_full_rwc": P(1.10, "RWC", "assumption: from the GO limit of the load class to RWC 1.10 the damage rises "
+                      "from 0 to the full anchor"),
+    "status_floor": P({"CAUTION": 0.25, "NO-GO": 0.5}, "", "assumption: minimum wetness factor when the day status "
+                      "is CAUTION / NO-GO for another reason (rain today, too few dry hours)"),
+    "subsoil_anchor": P(dict(wheel_t=5.5, bar=2.0, clay=30, sand=30, om=2.0, rwc=1.05), "",
+                        "anchor case for the subsoil part: 11 t axle, 2 bar, clay loam at RWC 1.05 -> RECARE 6%/yr"),
+    "subsoil_factor_max": P(1.5, "", "assumption: cap above the anchor"),
+    "default_tyre_bar": P({"L1": 1.0, "L2": 1.2, "L3": 1.4, "L4": 1.8, "L5": 2.0}, "bar",
+                          "assumption: typical field inflation by axle-load class when the farmer gives none"),
+}
+
 # ---------------------------------------------------------------- 7.9 confidence
 CONFIDENCE = {
     "start": P(100, "points", "spec 7.9"),

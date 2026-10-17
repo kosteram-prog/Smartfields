@@ -150,3 +150,54 @@ def test_real_avoidable_losses_demo_farm():
     a = cost.avoidable_losses("FARM-13525")
     assert 8000 <= a["year1_eur_mean"] <= 13000 and 2500 <= a["subsoil_eur_per_year_mean"] <= 5000
     assert a["years"] == list(range(2017, 2025))
+
+
+# ---------------------------------------------------------------- continuous go-now model (17 Oct evening)
+ECON = {"yield_t_ha": {"BARL": 5.0}, "price_eur_t": {"BARL": 200.0}, "trafficked_share": 0.3}
+
+
+def _g(status="NO-GO", rwc=1.05, axle=5.0, lc="L2", bar=None, clay=30.0):
+    return cost.go_now_cost(status, rwc, axle, lc, clay, 30.0, 2.0, "BARL", 10.0, bar, 1, ECON)
+
+
+def test_go_now_is_zero_on_go_and_positive_for_light_machines_on_wet_soil():
+    assert _g("GO", 0.85)["eur"] == 0 and _g("GO", 0.85)["persistent_eur_per_year"] == 0
+    e = _g("NO-GO", 1.05, 5.0, "L2")                       # the old table gave EUR 0 for L2
+    assert e["eur"] > 0 and e["loss_pct"] > 0
+
+
+def test_go_now_rises_with_wetness_axle_load_and_tyre_pressure():
+    assert _g(rwc=1.08)["eur"] > _g(rwc=0.98)["eur"]
+    assert _g(axle=8.0, lc="L3")["eur"] > _g(axle=5.0, lc="L2")["eur"] > _g(axle=3.0, lc="L1")["eur"]
+    assert _g(bar=2.0)["eur"] > _g(bar=1.0)["eur"]
+    assert _g(axle=13.0, lc="L5")["persistent_eur_per_year"] > _g(axle=5.0, lc="L2")["persistent_eur_per_year"]
+
+
+def test_go_now_anchor_is_hakansson_15_percent():
+    e = _g("NO-GO", 1.10, 11.0, "L5", bar=2.0)
+    assert e["loss_pct"] == pytest.approx(15.0)
+    assert e["eur"] == pytest.approx(15 / 100 * 0.3 * 10 * 5 * 200)
+
+
+def test_rain_no_go_counts_even_below_the_go_limit():
+    from engine import params as prm
+    assert _g("NO-GO", 0.70)["drivers"]["wetness"] == prm.GO_NOW_MODEL["status_floor"].value["NO-GO"]
+
+
+def test_go_or_wait_verdict():
+    assert cost.go_or_wait({"eur": 100.0, "persistent_eur_total": 0.0}, {"eur": 800.0})["verdict"] == "go"
+    assert cost.go_or_wait({"eur": 500.0, "persistent_eur_total": 900.0}, {"eur": 800.0})["verdict"] == "wait"
+    assert cost.go_or_wait({"eur": 400.0, "persistent_eur_total": 400.0}, {"eur": 800.0})["verdict"] == "close"
+    assert cost.go_or_wait({"eur": 100.0}, {"eur": "not available"})["verdict"] == "not available"
+
+
+def test_day_plan_fills_capacity_with_go_plots_first_then_cheapest_wet():
+    plots = pd.DataFrame({"parcel_id": ["G", "A", "B"], "status": ["GO", "CAUTION", "NO-GO"],
+                          "area_ha": [10.0, 10.0, 10.0], "year1_eur": [0.0, 100.0, 500.0],
+                          "subsoil_eur_total": [0.0, 0.0, 500.0]})
+    assert cost.day_plan_cost(plots, 8.0, 800.0)["verdict"] == "go_plots_only"
+    d = cost.day_plan_cost(plots, 15.0, 800.0)                 # 10 ha GO + 5 ha of the cheapest wet plot A
+    assert d["wet_ha"] == 5.0 and d["wet_plan"][0]["parcel_id"] == "A" and d["wet_eur"] == 50.0
+    assert d["wait_part_eur"] == pytest.approx(800 * 5 / 15, abs=1) and d["verdict"] == "fill_with_wet"
+    d2 = cost.day_plan_cost(plots.assign(year1_eur=[0.0, 2000.0, 2000.0]), 15.0, 800.0)
+    assert d2["verdict"] == "go_plots_only_wait"
