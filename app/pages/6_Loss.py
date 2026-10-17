@@ -44,7 +44,7 @@ def table(holding, date, machine, load, operation, share):
         s_ = stt.status.get(r.parcel_id, "not available")
         e = entry_cost(s_, lc, r.crop, r.area_ha, {"trafficked_share": share / 100.0, **econ})
         rows.append({"parcel_id": r.parcel_id, "crop": r.crop, "area_ha": r.area_ha, "clay_pct": r.clay_pct,
-                     "status": s_, "go_now_eur": e["eur"]})
+                     "status": s_, "go_now_eur": e["eur"], "subsoil_eur_per_year": e.get("persistent_eur_per_year")})
     return pd.DataFrame(rows), lc, axle
 
 
@@ -57,7 +57,10 @@ k = st.columns(3)
 with k[0]:
     ui.metric("Go now on every CAUTION / NO-GO parcel", ui.fmt_eur(float(num[wet.index].sum())), "synthetic+assumption",
               False, help="Year-1 yield loss on the trafficked area (spec 6.8.3); part of it can last for years")
-    st.caption(f"{len(wet)} parcels, {wet.area_ha.sum():.0f} ha")
+    per = pd.to_numeric(t.subsoil_eur_per_year, errors="coerce")[wet.index].sum()
+    st.caption(f"{len(wet)} parcels, {wet.area_ha.sum():.0f} ha"
+               + (f" · plus ~{ui.fmt_eur(float(per))} per year for ~{prm.WET_TRAFFIC_LOSS['persistent']['years'].value} "
+                  "years from the subsoil (L4-L5 only; RECARE 2018)" if per > 0 else ""))
 with k[1]:
     go = t[t.status == "GO"]
     ui.metric("Go only where GO", ui.fmt_eur(0.0), "modelled", False)
@@ -75,7 +78,8 @@ with k[2]:
 
 st.subheader("Per parcel")
 st.dataframe(t.sort_values(["status", "go_now_eur"], ascending=[False, False]), hide_index=True, width="stretch",
-             column_config={"go_now_eur": st.column_config.NumberColumn("If you go now (EUR, illustrative)", format="%.0f"),
+             column_config={"go_now_eur": st.column_config.NumberColumn("If you go now, year 1 (EUR, illustrative)", format="%.0f"),
+                            "subsoil_eur_per_year": st.column_config.NumberColumn("Subsoil, per year after (EUR)", format="%.0f"),
                             "area_ha": st.column_config.NumberColumn("Area (ha)", format="%.1f"),
                             "clay_pct": st.column_config.NumberColumn("Clay %", format="%.0f")})
 ui.show_origin("real+modelled+synthetic+assumption", False)

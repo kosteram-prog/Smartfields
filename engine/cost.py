@@ -4,7 +4,8 @@ Written by Marek's agent for Mirela's slice (agreed 16 Oct 20:22); Mirela review
 
 For each year and parcel:
   days_late = max(0, completion_date - optimum_end(crop) - grace)
-  loss_pct  = min(cap, rate x days_late)              rate low / default / high (% per day)
+  loss_pct  = min(cap, rate x days_late)              rate low / default / high (% per day), per crop
+                                                      (barley 0.43, wheat 1.0 %/day; decision 17 Oct)
   cost_eur  = loss_pct / 100 x expected_yield x area_ha x price
 Late-start part = the same with the perfect-weather schedule (all days GO from the window start);
 weather part = total - late start (the headline, D14). Missing yield, price or optimum_end -> "not available".
@@ -71,7 +72,13 @@ def _cost_table(schedule, parcels, years, params) -> pd.DataFrame:
     optimum = {k: v.value for k, v in cst["optimum_end"].items()} | (p.get("optimum_end") or {})
     grace = p.get("grace_days", cst["grace_days"].value)
     cap = p.get("cap_pct", cst["loss_cap_pct"].value)
-    rates = {r: cst["loss_rate_pct_per_day"][r].value for r in RATES} | (p.get("rates") or {})
+    fallback = {r: cst["loss_rate_pct_per_day"][r].value for r in RATES}
+    by_crop = {k: v.value for k, v in cst.get("loss_rate_by_crop", {}).items()}
+
+    def rates_for(crop):   # explicit params["rates"] apply to every crop; else the crop's own rate; else the fallback
+        if p.get("rates"):
+            return fallback | p["rates"]
+        return by_crop.get(crop, fallback)
     end = p.get("end", prm.SEASON["simulation_end"].value)
 
     comp = _completion(schedule, parcels["parcel_id"], years).merge(
@@ -89,7 +96,7 @@ def _cost_table(schedule, parcels, years, params) -> pd.DataFrame:
         else:
             days_late = max(0, (done - pd.Timestamp(f"{r.year}-{opt}")).days - grace)
             row["days_late"] = days_late
-            for rate, v in rates.items():
+            for rate, v in rates_for(r.crop).items():
                 row[rate] = min(cap, v * days_late) / 100.0 * yld * r.area_ha * prc
         rows.append(row)
     return pd.DataFrame(rows)
@@ -244,16 +251,44 @@ def season_costs(params: dict | None = None) -> dict:
     return out
 
 
-def entry_cost(status: str, load_class: str, crop: str, area_ha: float, params: dict | None = None) -> dict:
-    """Spec 6.8.3 (Add-on 3): year-1 yield loss on the trafficked area when the farmer goes although status != GO.
+def _persistent(out: dict, factor: float) -> dict:
+    """Long-term subsoil part (RECARE 2018): pct_per_year x factor on the trafficked area, for `years` (undiscounted)."""
+    pers = prm.WET_TRAFFIC_LOSS["persistent"]
+    rate, years = pers["pct_per_year"].value, pers["years"].value
+    base = {"persistent_years": years, "persistent_pct_per_year": rate * factor,
+            "persistent_note": f"Subsoil: about {rate:g}% of yield per year on the trafficked area for ~{years} years "
+                               "(RECARE 2018: 6-12% after heavy wet traffic), undiscounted, illustrative"}
+    if factor == 0:
+        return out | base | {"persistent_eur_per_year": 0.0, "persistent_eur_total": 0.0}
+    yld, prc, area, share = out.get("yield_t_ha"), out.get("price_eur_t"), out.get("area_ha"), out.get("trafficked_share")
+    if not all(_num(v) for v in (yld, prc, area, share)):
+        return out | base | {"persistent_eur_per_year": NA, "persistent_eur_total": NA}
+    per_year = rate * factor / 100.0 * share * area * yld * prc
+    return out | base | {"persistent_eur_per_year": round(per_year, 0), "persistent_eur_total": round(per_year * years, 0)}
+
+
+def _table_factor(status: str, load_class: str) -> float:
+    pers = prm.WET_TRAFFIC_LOSS["persistent"]
+    return pers["status_factor"].value.get(status, 0.0) * pers["class_factor"].value.get(load_class, 0.0)
+
+
+def entry_cost(status: str, load_class: str, crop: str, area_ha: float, params: dict | None = None,
+               persistent_factor: float | None = None) -> dict:
+    """Spec 6.8.3 (Add-on 3): year-1 yield loss on the trafficked area when the farmer goes although status != GO,
+    plus (decision 17 Oct) the long-term subsoil part, shown separately (RECARE 2018).
 
     eur = loss % (status, load class) x trafficked share x area x expected yield x price. Illustrative: needs
-    calibration; part of the damage (subsoil) can last for years.
+    calibration. persistent_factor: None -> from the table (L4/L5 on CAUTION / NO-GO); the tyre check passes its own.
     """
+    factor = _table_factor(status, load_class) if persistent_factor is None else persistent_factor
+    return _persistent(_entry_year1(status, load_class, crop, area_ha, params) | {"area_ha": area_ha}, factor)
+
+
+def _entry_year1(status: str, load_class: str, crop: str, area_ha: float, params: dict | None = None) -> dict:
     p = params or {}
     out = {"status": status, "load_class": load_class, "unit": "EUR", "label": "illustrative, needs calibration",
            "origin": "synthetic+assumption",
-           "note": "Year 1 only; part of the damage can last for years (subsoil compaction)."}
+           "note": "Year 1; the long-term subsoil part is shown separately."}
     if status == "GO":
         return out | {"eur": 0.0, "loss_pct": 0.0, "message": "EUR 0 expected: soil can carry this load today."}
     if status not in prm.WET_TRAFFIC_LOSS or load_class not in prm.WET_TRAFFIC_LOSS[status]:
@@ -284,5 +319,6 @@ def entry_cost_tyre(check: dict, load_class: str, crop: str, area_ha: float, par
         return {"eur": NA, "loss_pct": NA, "method": "tyre", "unit": "EUR", "origin": "synthetic+assumption",
                 "label": "illustrative, needs calibration",
                 "message": (check or {}).get("reason", "Tyre check not available.")}
-    out = entry_cost(check["cost_row"], load_class, crop, area_ha, params)
+    factor = prm.WET_TRAFFIC_LOSS["persistent"]["tyre_subsoil_factor"].value.get(check.get("subsoil"), 0.0)
+    out = entry_cost(check["cost_row"], load_class, crop, area_ha, params, persistent_factor=factor)
     return out | {"method": "tyre", "compaction_class": check["overall"]}

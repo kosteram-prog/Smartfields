@@ -21,8 +21,15 @@ def _line(e: dict, prefix: str) -> None:
         return
     extra = (f" · {e['loss_pct']:g}% year-1 loss on ~{e.get('trafficked_ha', '?')} ha trafficked"
              if isinstance(e.get("loss_pct"), (int, float)) and e["loss_pct"] > 0 else
-             " · light machine: compaction loss not counted (L1-L2)")
-    st.markdown(f"**{prefix}: {ui.fmt_eur(e['eur'])}** <small>(illustrative{extra})</small>", unsafe_allow_html=True)
+             " · year-1 loss of light machines (L1-L2) not counted")
+    st.markdown(f"**{prefix}: {ui.fmt_eur(e['eur'])}** <small>(year 1, illustrative{extra})</small>",
+                unsafe_allow_html=True)
+    py = e.get("persistent_eur_per_year")
+    if isinstance(py, (int, float)) and py > 0:
+        st.markdown(f"&nbsp;&nbsp;+ **{ui.fmt_eur(py)} per year** for ~{e['persistent_years']} years from the "
+                    f"compacted subsoil ≈ **{ui.fmt_eur(e['persistent_eur_total'])}** in total "
+                    f"<small>({e['persistent_pct_per_year']:g}% of yield per year on the trafficked area; RECARE 2018, "
+                    f"undiscounted, illustrative)</small>", unsafe_allow_html=True)
 
 
 def render(today_result: dict) -> None:
@@ -36,6 +43,7 @@ def render(today_result: dict) -> None:
     if comp:
         et = entry_cost_tyre(comp, *args)
         _line(et, f"With your tyres ({comp.get('inflation_bar', 0):.1f} bar, subsoil {comp.get('subsoil', '?')})")
-    st.caption(e["note"] + " Anchor: Håkansson multi-site study (10-12 t axle ~15% year-1 loss); "
-               "values for lighter classes are interpolated and need calibration.")
+    st.caption("Year 1 anchor: Håkansson multi-site study (10-12 t axle ~15% year-1 loss); lighter classes "
+               "interpolated. Long-term part: RECARE policy brief 2018 (6-12% per year after heavy traffic on wet "
+               "soil; subsoil damage lasts for decades). Both need calibration.")
     ui.show_origin(e["origin"], False)

@@ -35,11 +35,22 @@ def test_8_zero_inside_the_optimal_window():
     assert total(cost_of(schedule("2016-09-20", "2016-10-01"))) == 0
 
 
-def test_formula_example_one_percent_per_day():
-    # barley 10 days late: 10% x 5 t/ha x 10 ha x EUR 200 = EUR 1,000; wheat on time
+def test_formula_example_barley_rate_per_day():
+    # decision 17 Oct: crop-specific rates. Barley 10 days late at 0.43 %/day (Green et al. 1985):
+    # 4.3% x 5 t/ha x 10 ha x EUR 200 = EUR 430 (low 0.3 -> 300, high 0.6 -> 600); wheat on time
     res = cost_of(schedule("2016-09-30", "2016-10-01"))
+    assert total(res, "low") == pytest.approx(300) and total(res) == pytest.approx(430)
+    assert total(res, "high") == pytest.approx(600)
+
+
+def test_wheat_keeps_one_percent_per_day_and_explicit_rates_override_all_crops():
+    res = cost_of(schedule("2016-09-20", "2016-10-11"))                     # wheat 10 days late, barley on time
     assert total(res, "low") == pytest.approx(500) and total(res) == pytest.approx(1000)
     assert total(res, "high") == pytest.approx(1500)
+    params = {"yield_t_ha": {"BARL": 5.0, "COWT": 5.0}, "price_eur_t": {"BARL": 200.0, "COWT": 200.0},
+              "rates": {"low": 0.5, "default": 1.0, "high": 1.5}}
+    res = cost.season_cost(schedule("2016-09-30", "2016-10-01"), PARCELS, params)
+    assert total(res) == pytest.approx(1000)                                 # the user's own rate for every crop
 
 
 def test_9_higher_rate_never_lowers_cost_and_cap_holds():
@@ -79,6 +90,40 @@ def test_12_entry_cost_zero_when_go_and_no_go_at_least_caution():
     # L5 NO-GO: 15% x 30% trafficked x 10 ha x 5 t x EUR 200
     assert cost.entry_cost("NO-GO", "L5", "BARL", 10.0, **kw)["eur"] == pytest.approx(0.15 * 0.3 * 10 * 5 * 200)
     assert cost.entry_cost("NO-GO", "L2", "BARL", 10.0, **kw)["eur"] == 0                   # light drill: not counted
+
+
+# ---------------------------------------------------------------- long-term subsoil part (decision 17 Oct, RECARE)
+KW = dict(params={"yield_t_ha": {"BARL": 5.0}, "price_eur_t": {"BARL": 200.0}})
+
+
+def test_persistent_subsoil_part_for_heavy_traffic_on_wet_soil():
+    pers = cost.prm.WET_TRAFFIC_LOSS["persistent"]
+    rate, years = pers["pct_per_year"].value, pers["years"].value
+    assert rate == 6 and years == 10
+    e = cost.entry_cost("NO-GO", "L5", "BARL", 10.0, **KW)
+    per_year = rate / 100 * 0.3 * 10 * 5 * 200
+    assert e["persistent_eur_per_year"] == pytest.approx(per_year)
+    assert e["persistent_eur_total"] == pytest.approx(per_year * years) and e["persistent_years"] == years
+    assert cost.entry_cost("CAUTION", "L5", "BARL", 10.0, **KW)["persistent_eur_per_year"] == pytest.approx(per_year / 2)
+    assert cost.entry_cost("NO-GO", "L4", "BARL", 10.0, **KW)["persistent_eur_per_year"] == pytest.approx(per_year / 2)
+    assert cost.entry_cost("NO-GO", "L3", "BARL", 10.0, **KW)["persistent_eur_per_year"] == 0
+    assert cost.entry_cost("GO", "L5", "BARL", 10.0, **KW)["persistent_eur_per_year"] == 0
+
+
+def test_persistent_part_with_tyres_follows_the_subsoil_class():
+    pers = cost.prm.WET_TRAFFIC_LOSS["persistent"]
+    per_year = pers["pct_per_year"].value / 100 * 0.3 * 10 * 5 * 200
+    red = {"assessed": True, "subsoil": "red", "overall": "red", "cost_row": "NO-GO"}
+    yellow = {"assessed": True, "subsoil": "yellow", "overall": "red", "cost_row": "CAUTION"}
+    green = {"assessed": True, "subsoil": "green", "overall": "yellow", "cost_row": "GO"}
+    assert cost.entry_cost_tyre(red, "L2", "BARL", 10.0, **KW)["persistent_eur_per_year"] == pytest.approx(per_year)
+    assert cost.entry_cost_tyre(yellow, "L2", "BARL", 10.0, **KW)["persistent_eur_per_year"] == pytest.approx(per_year / 2)
+    assert cost.entry_cost_tyre(green, "L5", "BARL", 10.0, **KW)["persistent_eur_per_year"] == 0
+
+
+def test_persistent_part_missing_price_is_not_available():
+    r = cost.entry_cost("NO-GO", "L5", "XXXX", 10.0, params={"yield_t_ha": {"XXXX": 5.0}, "price_eur_t": {}})
+    assert r["persistent_eur_per_year"] == NA and r["persistent_eur_total"] == NA
 
 
 def test_12_entry_cost_missing_price_is_not_available():

@@ -42,7 +42,10 @@ with tabs[2]:
     c = prm.COST
     st.dataframe(pd.DataFrame([{"crop": k, "optimal sowing ends": v.value or "enter manually", "source": v.source}
                                for k, v in c["optimum_end"].items()]), hide_index=True)
-    st.caption(f"Loss rate {c['loss_rate_pct_per_day']['low'].value} / {c['loss_rate_pct_per_day']['default'].value} / "
+    st.dataframe(pd.DataFrame([{"crop": k, "loss % per day (low / default / high)":
+                                f"{v.value['low']} / {v.value['default']} / {v.value['high']}", "source": v.source}
+                               for k, v in c["loss_rate_by_crop"].items()]), hide_index=True)
+    st.caption(f"Other crops: {c['loss_rate_pct_per_day']['low'].value} / {c['loss_rate_pct_per_day']['default'].value} / "
                f"{c['loss_rate_pct_per_day']['high'].value} % of yield per day after the optimal date (IUNG, Jończyk), "
                f"cap {c['loss_cap_pct'].value} %. Contractor price {c['contractor_price_eur_ha'].value} EUR/ha "
                f"({c['contractor_price_eur_ha'].source}). Headline = weather part; late start shown separately.")
@@ -50,9 +53,13 @@ with tabs[3]:
     w = prm.WET_TRAFFIC_LOSS
     st.dataframe(pd.DataFrame([{"class": k, "NO-GO year-1 loss %": w["NO-GO"][k].value,
                                 "CAUTION year-1 loss %": w["CAUTION"][k].value} for k in w["NO-GO"]]), hide_index=True)
+    pers = w["persistent"]
     st.caption(f"Applied to {w['trafficked_share'].value:.0%} of the parcel (trafficked share, editable). Anchor: "
-               "Håkansson multi-site study (10-12 t axle ~15 % year-1 loss; 3-5 % subsoil losses for 12 years). "
-               "L3/L4 and the CAUTION factor are interpolated: illustrative, needs calibration.")
+               "Håkansson multi-site study (10-12 t axle ~15 % year-1 loss). L3/L4 and the CAUTION factor are "
+               "interpolated: illustrative, needs calibration.")
+    st.caption(f"Long-term subsoil part (shown separately): {pers['pct_per_year'].value} % of yield per year for "
+               f"~{pers['years'].value} years on the trafficked area, L5 (L4 x0.5), NO-GO (CAUTION x0.5); with tyre data "
+               f"it follows the subsoil class (red x1, yellow x0.5). Source: {pers['pct_per_year'].source}.")
 with tabs[4]:
     n = prm.N_RULES
     st.markdown(f"- **High:** any day >= {n['heavy_rain']['rain_mm'].value:g} mm from the application day to "

@@ -203,14 +203,23 @@ N_RULES = {
 COST = {
     "optimum_end": {   # MM-DD, per crop code
         "COWT": P("10-01", "MM-DD", "IOR-PIB wheat methodology (west 15 Sep - 1 Oct); to confirm"),
-        "BARL": P("09-20", "MM-DD", "IOR-PIB barley methodology, Korbas & Mrowczynski 2012; to confirm"),
+        "BARL": P("09-20", "MM-DD", "IOR-PIB barley methodology (Korbas & Mrowczynski 2012); confirmed by IUNG "
+                  "(Leszczynska & Kostiw 2018): west of Poland 16-20 Sep, 20-25 Sep in long warm autumns"),
         "RAPE": P(None, "MM-DD", "not available (enter manually)"),
     },
     "grace_days": P(0, "days", "spec 6.8.1 (editable)"),
-    "loss_rate_pct_per_day": {
+    "loss_rate_pct_per_day": {   # fallback for crops without their own rate
         "low": P(0.5, "% per day", "Jonczyk 1998"),
         "default": P(1.0, "% per day", "IUNG Pulawy trials"),
         "high": P(1.5, "% per day", "spec 6.8.1"),
+    },
+    # decision 17 Oct (Marek): crop-specific rates (low / default / high, % of yield per day after optimum_end)
+    "loss_rate_by_crop": {
+        "BARL": P({"low": 0.3, "default": 0.43, "high": 0.6}, "% per day",
+                  "winter barley: Green, Furmston & Ivins 1985 (J. Agric. Sci.) 0.43 %/day; LLFG Bernburg 2000-02 "
+                  "(Boese 2006) ~2.5 dt/ha per week ~0.38 %/day; range 0.3-0.6"),
+        "COWT": P({"low": 0.5, "default": 1.0, "high": 1.5}, "% per day",
+                  "winter wheat: IUNG Pulawy trials 1.0; Jonczyk 1998 0.5; Herse & Nelken (central PL) ~0.8"),
     },
     "loss_cap_pct": P(40, "%", "spec 6.8.1"),
     "contractor_price_eur_ha": P(68, "EUR/ha", "290 PLN/ha ~ EUR 68 (range 63-73); kb.pl survey Jan 2026"),
@@ -225,6 +234,18 @@ WET_TRAFFIC_LOSS = {
     "CAUTION": {"L1": P(0, "%", _WTL), "L2": P(0, "%", _WTL), "L3": P(2.5, "%", _WTL), "L4": P(5, "%", _WTL),
                 "L5": P(7.5, "%", _WTL)},
     "trafficked_share": P(0.30, "share", "spec 6.8.3, editable"),
+    # decision 17 Oct (Marek): the long-term subsoil part, shown separately from year 1 (undiscounted)
+    "persistent": {
+        "pct_per_year": P(6, "% of yield per year", "RECARE policy brief (Schjønning, Lamandé, Thorsøe, Frelih-Larsen "
+                          "2018): high wheel loads on wet soil -> long-term yield penalty 6-12%; EU estimate ~6%/yr"),
+        "years": P(10, "years", "assumption: subsoil compaction persists for decades (RECARE 2018); Håkansson & Reeder "
+                   "1994: losses in the subsoil for more than 10 years"),
+        "class_factor": P({"L4": 0.5, "L5": 1.0}, "", "table mode: high wheel loads only (Håkansson anchor 10-12 t axle "
+                          "= L5; L4 interpolated); L1-L3 not counted"),
+        "status_factor": P({"NO-GO": 1.0, "CAUTION": 0.5}, "", "as the CAUTION factor of the 6.8.3 table"),
+        "tyre_subsoil_factor": P({"red": 1.0, "yellow": 0.5, "green": 0.0}, "",
+                                 "tyre mode: the subsoil class of the compaction check (any load class)"),
+    },
 }
 
 # ---------------------------------------------------------------- 7.9 confidence
