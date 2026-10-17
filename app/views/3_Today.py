@@ -73,25 +73,19 @@ t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, 
 stub = not REAL
 when = pd.Timestamp(replay)
 
-# ------------------------------------------------------------------ row 1: status · next days · why
-c_status, c_next, c_why = st.columns([1.1, 1.5, 1.7])
+# ------------------------------------------------------------------ verdict, then outlook, then why
+c_status, c_next = st.columns([1, 1.25], gap="large")
 with c_status:
-    ui.status_tile(f"{ui.field_name(parcel)} · {when:%d %b %Y}", t["status"], size="3rem")
-    a, s = st.columns(2)
-    with a:
-        ui.status_tile("Plot access", t["access"], size="0.95rem")
-    with s:
-        ui.status_tile("Operation", t["suitability"], size="0.95rem")
+    st.markdown("**Today**")
+    ui.status_tile(f"{ui.field_name(parcel)} · {when:%d %b %Y}", t["status"], size="2.5rem", min_height="6.4rem")
     prof = custom["name"] if custom else prm.MACHINES[machine]["profile"]
     st.caption(f"{prof} at {load}% load: {t.get('axle_load_t')} t on the heaviest axle "
                + ("(your machine data)" if custom else "(typical machine, assumption)"))
     ui.show_origin(t["origin"], stub)
 with c_next:
     st.markdown("**Next 72 hours**")
-    cols = st.columns(3)
-    for col, d in zip(cols, t["strip72"]):
-        with col:
-            ui.status_tile(pd.Timestamp(d["date"]).strftime("%a %d"), d["status"], size="0.95rem")
+    ui.status_strip([(pd.Timestamp(d["date"]).strftime("%a %d"), d["status"]) for d in t["strip72"]],
+                    size="1.1rem", min_height="6.4rem")
     first = t.get("days_to_first_go")
     if first is not None:
         st.caption("First GO: " + ("today" if first == 0 else f"in {first} day(s)" if isinstance(first, int) else str(first)))
@@ -103,14 +97,18 @@ with c_next:
             f"{pd.Timestamp(o['date']):%a %d}: {o['status']}</span>" for o in out7)
         st.markdown(f"<div><small>Next 7 days:</small> {chips}</div>", unsafe_allow_html=True)
     st.caption("Replay: the weather that followed this day plays the forecast.")
-with c_why:
-    st.markdown("**Why**")
-    for r in ui.plain_reasons(t):
-        st.markdown(r)
-    conf = t["confidence"]
-    st.markdown(f"<small>Data quality: <b>{t.get('data_quality', 'medium')}</b> · Confidence: <b>"
-                f"{conf if isinstance(conf, str) else f'{conf}%'}</b></small>", unsafe_allow_html=True)
-    st.markdown(f"**Best next check:** {t['best_next_check']}")
+
+st.markdown("**Access and operation**")
+ui.status_strip([("Plot access", t["access"]), ("Operation", t["suitability"])],
+                size="1.25rem", min_height="5.2rem")
+
+st.markdown("**Why**")
+for r in ui.plain_reasons(t):
+    st.markdown(r)
+conf = t["confidence"]
+st.caption(f"Data quality: {t.get('data_quality', 'medium')} · Confidence: "
+           f"{conf if isinstance(conf, str) else f'{conf}%'}")
+st.markdown(f"**Best next check:** {t['best_next_check']}")
 
 # ------------------------------------------------------------------ row 2: the money, side by side
 m_go, m_wait = st.columns(2)
