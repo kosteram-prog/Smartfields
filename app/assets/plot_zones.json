@@ -1,0 +1,1421 @@
+{
+"grid": {
+"w": 400,
+"h": 260,
+"cell_m": 10,
+"ortho_px_per_cell": 4
+},
+"sources": "Contains modified Copernicus Sentinel data [2016-2024], CDSE Process API",
+"s1_dates": [
+"2016-09-29",
+"2016-10-05",
+"2016-10-11"
+],
+"plots": {
+"PARCEL-0149880": {
+"cells": 4471,
+"wet_change_db": 1.7,
+"wet_change_11oct_db": 1.26,
+"wet_zone_change_db": [
+3.45,
+1.65,
+-0.01
+],
+"wet_zone_change_11oct_db": [
+2.12,
+1.38,
+0.3
+],
+"wet_share": [
+0.333,
+0.333,
+0.333
+],
+"ndvi_years": [
+2018,
+2019,
+2020,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-3.0,
+-0.1,
+2.1
+],
+"ndvi_year_corr": 0.14,
+"prod_share": [
+0.333,
+0.333,
+0.334
+],
+"wet_in_low_prod": 0.4,
+"box": [
+261,
+137,
+377,
+208
+]
+},
+"PARCEL-0149895": {
+"cells": 3180,
+"wet_change_db": 2.97,
+"wet_change_11oct_db": 2.46,
+"wet_zone_change_db": [
+5.04,
+2.96,
+0.9
+],
+"wet_zone_change_11oct_db": [
+4.77,
+2.12,
+0.48
+],
+"wet_share": [
+0.334,
+0.333,
+0.333
+],
+"ndvi_years": [
+2018,
+2019,
+2020,
+2022,
+2023
+],
+"ndvi_zone_rel": [
+-17.4,
+-1.1,
+3.2
+],
+"ndvi_year_corr": 0.03,
+"prod_share": [
+0.333,
+0.333,
+0.333
+],
+"wet_in_low_prod": 0.08,
+"box": [
+216,
+198,
+290,
+259
+]
+},
+"PARCEL-0149917": {
+"cells": 2850,
+"wet_change_db": 1.39,
+"wet_change_11oct_db": -0.67,
+"wet_zone_change_db": [
+3.09,
+1.43,
+-0.37
+],
+"wet_zone_change_11oct_db": [
+0.02,
+-0.57,
+-1.47
+],
+"wet_share": [
+0.333,
+0.334,
+0.332
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-3.1,
+-0.2,
+2.2
+],
+"ndvi_year_corr": 0.46,
+"prod_share": [
+0.333,
+0.334,
+0.333
+],
+"wet_in_low_prod": 0.38,
+"box": [
+37,
+22,
+104,
+82
+]
+},
+"PARCEL-0149871": {
+"cells": 1809,
+"wet_change_db": 0.57,
+"wet_change_11oct_db": 0.91,
+"wet_zone_change_db": [
+2.16,
+0.55,
+-0.99
+],
+"wet_zone_change_11oct_db": [
+1.95,
+0.76,
+0.03
+],
+"wet_share": [
+0.334,
+0.335,
+0.331
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-3.3,
+-0.2,
+2.6
+],
+"ndvi_year_corr": 0.3,
+"prod_share": [
+0.333,
+0.334,
+0.333
+],
+"wet_in_low_prod": 0.21,
+"box": [
+324,
+129,
+399,
+175
+]
+},
+"PARCEL-0149889": {
+"cells": 1580,
+"wet_change_db": 0.44,
+"wet_change_11oct_db": 0.7,
+"wet_zone_change_db": [
+2.26,
+0.26,
+-1.21
+],
+"wet_zone_change_11oct_db": [
+1.7,
+0.45,
+-0.04
+],
+"wet_share": [
+0.334,
+0.332,
+0.334
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-4.8,
+0.0,
+1.9
+],
+"ndvi_year_corr": 0.46,
+"prod_share": [
+0.33,
+0.336,
+0.334
+],
+"wet_in_low_prod": 0.45,
+"box": [
+289,
+85,
+346,
+126
+]
+},
+"PARCEL-0149896": {
+"cells": 1317,
+"wet_change_db": 2.44,
+"wet_change_11oct_db": 2.61,
+"wet_zone_change_db": [
+4.39,
+2.33,
+0.58
+],
+"wet_zone_change_11oct_db": [
+3.87,
+2.3,
+1.64
+],
+"wet_share": [
+0.336,
+0.331,
+0.333
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-2.5,
+0.2,
+1.1
+],
+"ndvi_year_corr": 0.11,
+"prod_share": [
+0.333,
+0.332,
+0.335
+],
+"wet_in_low_prod": 0.37,
+"box": [
+47,
+1,
+111,
+27
+]
+},
+"PARCEL-0149869": {
+"cells": 969,
+"wet_change_db": 1.61,
+"wet_change_11oct_db": 1.59,
+"wet_zone_change_db": [
+3.58,
+1.56,
+-0.32
+],
+"wet_zone_change_11oct_db": [
+2.98,
+1.41,
+0.39
+],
+"wet_share": [
+0.333,
+0.333,
+0.333
+],
+"ndvi_years": [
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-5.3,
+0.1,
+2.0
+],
+"ndvi_year_corr": 0.43,
+"prod_share": [
+0.332,
+0.334,
+0.333
+],
+"wet_in_low_prod": 0.44,
+"box": [
+267,
+73,
+295,
+124
+]
+},
+"PARCEL-0149877": {
+"cells": 856,
+"wet_change_db": 2.31,
+"wet_change_11oct_db": 2.34,
+"wet_zone_change_db": [
+4.75,
+2.42,
+-0.26
+],
+"wet_zone_change_11oct_db": [
+4.47,
+2.32,
+0.22
+],
+"wet_share": [
+0.334,
+0.334,
+0.332
+],
+"ndvi_years": [
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-10.8,
+0.5,
+3.2
+],
+"ndvi_year_corr": 0.23,
+"prod_share": [
+0.333,
+0.331,
+0.336
+],
+"wet_in_low_prod": 0.28,
+"box": [
+123,
+1,
+145,
+72
+]
+},
+"PARCEL-0149873": {
+"cells": 671,
+"wet_change_db": 0.73,
+"wet_change_11oct_db": 1.3,
+"wet_zone_change_db": [
+2.76,
+0.55,
+-1.11
+],
+"wet_zone_change_11oct_db": [
+2.54,
+1.26,
+0.09
+],
+"wet_share": [
+0.334,
+0.332,
+0.334
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-0.7,
+0.0,
+0.3
+],
+"ndvi_year_corr": 0.06,
+"prod_share": [
+0.332,
+0.332,
+0.335
+],
+"wet_in_low_prod": 0.54,
+"box": [
+192,
+186,
+222,
+236
+]
+},
+"PARCEL-0149872": {
+"cells": 664,
+"wet_change_db": 0.82,
+"wet_change_11oct_db": 0.7,
+"wet_zone_change_db": [
+2.61,
+0.79,
+-0.95
+],
+"wet_zone_change_11oct_db": [
+1.63,
+0.7,
+-0.24
+],
+"wet_share": [
+0.337,
+0.328,
+0.334
+],
+"ndvi_years": [
+2019,
+2020,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-12.4,
+0.4,
+2.8
+],
+"ndvi_year_corr": 0.27,
+"prod_share": [
+0.333,
+0.333,
+0.334
+],
+"wet_in_low_prod": 0.3,
+"box": [
+278,
+229,
+312,
+259
+]
+},
+"PARCEL-0149867": {
+"cells": 530,
+"wet_change_db": 4.13,
+"wet_change_11oct_db": 3.95,
+"wet_zone_change_db": [
+5.76,
+3.98,
+2.61
+],
+"wet_zone_change_11oct_db": [
+5.44,
+3.95,
+2.43
+],
+"wet_share": [
+0.34,
+0.326,
+0.334
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-1.0,
+-0.0,
+1.0
+],
+"ndvi_year_corr": 0.13,
+"prod_share": [
+0.334,
+0.33,
+0.336
+],
+"wet_in_low_prod": 0.31,
+"box": [
+351,
+77,
+392,
+99
+]
+},
+"PARCEL-0149906": {
+"cells": 466,
+"wet_change_db": 3.26,
+"wet_change_11oct_db": 3.33,
+"wet_zone_change_db": [
+5.46,
+3.26,
+1.05
+],
+"wet_zone_change_11oct_db": [
+5.09,
+3.45,
+1.45
+],
+"wet_share": [
+0.333,
+0.335,
+0.333
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-26.4,
+0.1,
+4.5
+],
+"ndvi_year_corr": 0.58,
+"prod_share": [
+0.335,
+0.33,
+0.335
+],
+"wet_in_low_prod": 0.37,
+"box": [
+349,
+92,
+387,
+113
+]
+},
+"PARCEL-0149915": {
+"cells": 388,
+"wet_change_db": 4.89,
+"wet_change_11oct_db": 4.46,
+"wet_zone_change_db": [
+6.64,
+4.91,
+3.13
+],
+"wet_zone_change_11oct_db": [
+5.63,
+4.61,
+3.15
+],
+"wet_share": [
+0.332,
+0.332,
+0.335
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-7.8,
+0.2,
+1.6
+],
+"ndvi_year_corr": 0.51,
+"prod_share": [
+0.332,
+0.332,
+0.335
+],
+"wet_in_low_prod": 0.31,
+"box": [
+182,
+191,
+200,
+227
+]
+},
+"PARCEL-0149916": {
+"cells": 384,
+"wet_change_db": 3.97,
+"wet_change_11oct_db": 2.63,
+"wet_zone_change_db": [
+5.7,
+4.01,
+2.17
+],
+"wet_zone_change_11oct_db": [
+3.55,
+2.87,
+1.47
+],
+"wet_share": [
+0.333,
+0.336,
+0.331
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-2.7,
+-0.4,
+2.7
+],
+"ndvi_year_corr": 0.19,
+"prod_share": [
+0.333,
+0.331,
+0.336
+],
+"wet_in_low_prod": 0.09,
+"box": [
+169,
+82,
+188,
+117
+]
+},
+"PARCEL-0149894": {
+"cells": 372,
+"wet_change_db": 0.86,
+"wet_change_11oct_db": 0.71,
+"wet_zone_change_db": [
+2.48,
+0.98,
+-0.95
+],
+"wet_zone_change_11oct_db": [
+1.48,
+0.94,
+-0.35
+],
+"wet_share": [
+0.333,
+0.344,
+0.323
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-3.9,
+0.1,
+2.1
+],
+"ndvi_year_corr": 0.25,
+"prod_share": [
+0.333,
+0.325,
+0.341
+],
+"wet_in_low_prod": 0.11,
+"box": [
+161,
+167,
+186,
+193
+]
+},
+"PARCEL-0149898": {
+"cells": 329,
+"wet_change_db": 2.5,
+"wet_change_11oct_db": 2.75,
+"wet_zone_change_db": [
+4.62,
+2.67,
+0.22
+],
+"wet_zone_change_11oct_db": [
+4.23,
+3.04,
+0.98
+],
+"wet_share": [
+0.334,
+0.331,
+0.334
+],
+"ndvi_years": [
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-37.1,
+-5.1,
+18.0
+],
+"ndvi_year_corr": 0.62,
+"prod_share": [
+0.334,
+0.331,
+0.334
+],
+"wet_in_low_prod": 0.4,
+"box": [
+239,
+56,
+256,
+83
+]
+},
+"PARCEL-0149886": {
+"cells": 300,
+"wet_change_db": 3.6,
+"wet_change_11oct_db": 3.43,
+"wet_zone_change_db": [
+5.23,
+3.66,
+1.88
+],
+"wet_zone_change_11oct_db": [
+4.64,
+3.43,
+2.19
+],
+"wet_share": [
+0.333,
+0.34,
+0.327
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-2.7,
+-0.1,
+1.2
+],
+"ndvi_year_corr": 0.18,
+"prod_share": [
+0.327,
+0.34,
+0.333
+],
+"wet_in_low_prod": 0.35,
+"box": [
+167,
+234,
+187,
+259
+]
+},
+"PARCEL-0149875": {
+"cells": 291,
+"wet_change_db": 4.69,
+"wet_change_11oct_db": 4.27,
+"wet_zone_change_db": [
+6.8,
+4.66,
+2.58
+],
+"wet_zone_change_11oct_db": [
+6.26,
+4.06,
+2.46
+],
+"wet_share": [
+0.337,
+0.33,
+0.333
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-4.2,
+-0.2,
+1.8
+],
+"ndvi_year_corr": 0.23,
+"prod_share": [
+0.33,
+0.337,
+0.333
+],
+"wet_in_low_prod": 0.27,
+"box": [
+136,
+206,
+162,
+228
+]
+},
+"PARCEL-0149890": {
+"cells": 268,
+"wet_change_db": 1.42,
+"wet_change_11oct_db": 1.68,
+"wet_zone_change_db": [
+3.07,
+1.28,
+-0.11
+],
+"wet_zone_change_11oct_db": [
+2.97,
+1.03,
+1.02
+],
+"wet_share": [
+0.336,
+0.332,
+0.332
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-0.6,
+-0.0,
+0.3
+],
+"ndvi_year_corr": 0.21,
+"prod_share": [
+0.332,
+0.332,
+0.336
+],
+"wet_in_low_prod": 0.11,
+"box": [
+210,
+122,
+233,
+141
+]
+},
+"PARCEL-0149913": {
+"cells": 227,
+"wet_change_db": 1.26,
+"wet_change_11oct_db": 2.27,
+"wet_zone_change_db": [
+3.25,
+0.95,
+-0.47
+],
+"wet_zone_change_11oct_db": [
+4.08,
+2.35,
+0.3
+],
+"wet_share": [
+0.335,
+0.344,
+0.322
+],
+"ndvi_years": [
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-13.8,
+0.7,
+1.6
+],
+"ndvi_year_corr": 0.36,
+"prod_share": [
+0.335,
+0.33,
+0.335
+],
+"wet_in_low_prod": 0.34,
+"box": [
+51,
+125,
+68,
+159
+]
+},
+"PARCEL-0149897": {
+"cells": 96,
+"wet_change_db": 5.0,
+"wet_change_11oct_db": 3.93,
+"wet_zone_change_db": [
+6.73,
+5.03,
+3.18
+],
+"wet_zone_change_11oct_db": [
+5.47,
+3.56,
+2.71
+],
+"wet_share": [
+0.344,
+0.323,
+0.333
+],
+"ndvi_years": [
+2018,
+2019,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-8.0,
+-1.0,
+2.3
+],
+"ndvi_year_corr": -0.3,
+"prod_share": [
+0.333,
+0.333,
+0.333
+],
+"wet_in_low_prod": 0.62,
+"box": [
+119,
+186,
+132,
+200
+]
+},
+"PARCEL-0149870": {
+"cells": 1879,
+"wet_change_db": 2.81,
+"wet_change_11oct_db": 3.33,
+"wet_zone_change_db": [
+5.44,
+2.89,
+0.11
+],
+"wet_zone_change_11oct_db": [
+5.2,
+3.29,
+1.49
+],
+"wet_share": [
+0.334,
+0.333,
+0.333
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-37.4,
+-9.9,
+9.3
+],
+"ndvi_year_corr": 0.71,
+"prod_share": [
+0.331,
+0.335,
+0.334
+],
+"wet_in_low_prod": 0.02,
+"box": [
+63,
+213,
+133,
+259
+]
+},
+"PARCEL-0149905": {
+"cells": 1597,
+"wet_change_db": 4.74,
+"wet_change_11oct_db": 3.65,
+"wet_zone_change_db": [
+7.11,
+4.89,
+2.21
+],
+"wet_zone_change_11oct_db": [
+4.79,
+3.76,
+2.4
+],
+"wet_share": [
+0.333,
+0.333,
+0.334
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-12.3,
+-3.3,
+17.6
+],
+"ndvi_year_corr": 0.24,
+"prod_share": [
+0.332,
+0.334,
+0.334
+],
+"wet_in_low_prod": 0.26,
+"box": [
+300,
+1,
+339,
+69
+]
+},
+"PARCEL-0149882": {
+"cells": 1285,
+"wet_change_db": 4.06,
+"wet_change_11oct_db": 3.0,
+"wet_zone_change_db": [
+6.28,
+4.18,
+1.73
+],
+"wet_zone_change_11oct_db": [
+5.24,
+2.98,
+0.8
+],
+"wet_share": [
+0.333,
+0.334,
+0.333
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-17.1,
+-0.1,
+6.5
+],
+"ndvi_year_corr": 0.56,
+"prod_share": [
+0.332,
+0.334,
+0.334
+],
+"wet_in_low_prod": 0.4,
+"box": [
+283,
+1,
+317,
+71
+]
+},
+"PARCEL-0149885": {
+"cells": 956,
+"wet_change_db": 1.03,
+"wet_change_11oct_db": 1.45,
+"wet_zone_change_db": [
+2.73,
+0.95,
+-0.6
+],
+"wet_zone_change_11oct_db": [
+2.65,
+1.54,
+0.16
+],
+"wet_share": [
+0.335,
+0.333,
+0.333
+],
+"ndvi_years": [
+2018,
+2019,
+2020,
+2021,
+2022
+],
+"ndvi_zone_rel": [
+-2.6,
+0.0,
+0.8
+],
+"ndvi_year_corr": 0.38,
+"prod_share": [
+0.332,
+0.333,
+0.336
+],
+"wet_in_low_prod": 0.38,
+"box": [
+373,
+174,
+399,
+225
+]
+},
+"PARCEL-0149899": {
+"cells": 742,
+"wet_change_db": 3.95,
+"wet_change_11oct_db": 3.82,
+"wet_zone_change_db": [
+5.41,
+3.97,
+2.47
+],
+"wet_zone_change_11oct_db": [
+5.31,
+3.67,
+2.46
+],
+"wet_share": [
+0.336,
+0.33,
+0.334
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-10.1,
+-0.9,
+3.6
+],
+"ndvi_year_corr": 0.2,
+"prod_share": [
+0.333,
+0.333,
+0.334
+],
+"wet_in_low_prod": 0.19,
+"box": [
+332,
+1,
+371,
+38
+]
+},
+"PARCEL-0149868": {
+"cells": 639,
+"wet_change_db": 2.42,
+"wet_change_11oct_db": 2.55,
+"wet_zone_change_db": [
+4.86,
+2.41,
+-0.06
+],
+"wet_zone_change_11oct_db": [
+4.77,
+2.35,
+0.48
+],
+"wet_share": [
+0.333,
+0.34,
+0.327
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-8.5,
+-0.1,
+3.9
+],
+"ndvi_year_corr": -0.27,
+"prod_share": [
+0.333,
+0.332,
+0.335
+],
+"wet_in_low_prod": 0.35,
+"box": [
+28,
+67,
+68,
+89
+]
+},
+"PARCEL-0149893": {
+"cells": 479,
+"wet_change_db": 4.67,
+"wet_change_11oct_db": 4.38,
+"wet_zone_change_db": [
+6.33,
+4.67,
+2.98
+],
+"wet_zone_change_11oct_db": [
+5.96,
+4.29,
+2.87
+],
+"wet_share": [
+0.334,
+0.336,
+0.33
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021
+],
+"ndvi_zone_rel": [
+-5.5,
+-0.7,
+2.7
+],
+"ndvi_year_corr": 0.56,
+"prod_share": [
+0.328,
+0.336,
+0.336
+],
+"wet_in_low_prod": 0.31,
+"box": [
+104,
+195,
+140,
+221
+]
+},
+"PARCEL-0149879": {
+"cells": 318,
+"wet_change_db": 4.65,
+"wet_change_11oct_db": 4.3,
+"wet_zone_change_db": [
+5.89,
+4.91,
+3.14
+],
+"wet_zone_change_11oct_db": [
+5.53,
+4.44,
+2.9
+],
+"wet_share": [
+0.34,
+0.327,
+0.333
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2023,
+2024
+],
+"ndvi_zone_rel": [
+-4.2,
+-1.4,
+-0.4
+],
+"ndvi_year_corr": -0.28,
+"prod_share": [
+0.333,
+0.33,
+0.336
+],
+"wet_in_low_prod": 0.02,
+"box": [
+184,
+234,
+205,
+259
+]
+},
+"PARCEL-0149892": {
+"cells": 117,
+"wet_change_db": 3.12,
+"wet_change_11oct_db": 2.89,
+"wet_zone_change_db": [
+5.0,
+3.17,
+1.08
+],
+"wet_zone_change_11oct_db": [
+4.87,
+2.48,
+1.22
+],
+"wet_share": [
+0.342,
+0.333,
+0.325
+],
+"ndvi_years": [
+2017,
+2018,
+2019,
+2020,
+2021,
+2022,
+2024
+],
+"ndvi_zone_rel": [
+-2.7,
+-0.3,
+2.1
+],
+"ndvi_year_corr": 0.32,
+"prod_share": [
+0.333,
+0.333,
+0.333
+],
+"wet_in_low_prod": 0.74,
+"box": [
+241,
+85,
+251,
+110
+]
+}
+}
+}
