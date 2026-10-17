@@ -404,3 +404,16 @@ COMPACTION = {
                            "proposed: the subsoil class (persistent damage) picks the row of the 6.8.3 table, the "
                            "axle-load class the column; tilled topsoil is usually above its strength (Terranimo note)"),
 }
+
+# ---------------------------------------------------------------- 17 Oct: NDVI productivity zones of the real field
+# Pre-rendered (app/assets/ndvi_zones.png); computed once via CDSE Process API, no live call in the app.
+NDVI_ZONES = {
+    "method": P("Sentinel-2 L2A, NDVI 75th percentile of clear pixels (SCL 4/5) 15 Apr-30 Jun per year; years with a "
+                "closed canopy only (field median >= 0.6): 2017, 2018, 2019, 2021, 2022, 2024 (2020, 2023 = spring crop); "
+                "NDVI / field median per year, median over years, terciles", "", "CDSE Process API, 17 Oct", "real"),
+    "zones_ha": P({"lower": 26.9, "average": 26.9, "higher": 26.9}, "ha", "terciles of 80.7 ha", "real"),
+    "lower_vs_median_pct": P(-7, "%", "mean relative NDVI of the lower zone 0.93", "real"),
+    "year_to_year_rank_corr": P(0.56, "Spearman", "median over year pairs (range 0.13-0.76): a moderately stable pattern", "real"),
+    "corr_with_radar_wetness": P(0.0, "Spearman", "relative NDVI vs VV change 5 Oct - 29 Sep 2016: productivity zones and "
+                                 "wet zones are different patterns", "real"),
+}
