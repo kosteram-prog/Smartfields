@@ -52,23 +52,24 @@ if st.session_state.get("parcel") not in ids:
 parcel = st.session_state["parcel"]
 
 st.markdown("**Which plot can you go on?**")
-bar = st.columns([1.4, 2.6, 1.6, 1, 1.5, 1.6])
+bar = st.columns([1.4, 2.6, 2.0, 1.1], gap="medium")
 operation = ui.pick(bar[0], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
 machine = ui.pick(bar[1], "selectbox", "Machine", "machine", list(prm.MACHINES),
                   format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
 load = ui.pick(bar[2], "slider", "Load (%)", "load", min_value=0, max_value=100)
 passes = bar[3].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
 custom = None
-with bar[4].popover("Use my own machine"):
+tyre_bar = None
+bd = None
+opt = st.columns([1.15, 1.45, 2], gap="medium")
+with opt[0].popover("Use my own machine"):
     use_custom = st.checkbox("Use my machine instead of the profile", key="use_custom")
     cm_name = st.text_input("Name", "My tractor + drill", key="cm_name")
     cm_axle = st.number_input("Max axle load at this load (t)", 0.5, 20.0, 6.0, 0.5, key="cm_axle",
                               help="Heaviest axle with the current load (weighbridge or manufacturer data)")
     if use_custom:
         custom = {"name": cm_name, "axle_t": float(cm_axle)}
-tyre_bar = None
-bd = None
-with bar[5].popover("My tyre pressure (optional)"):
+with opt[1].popover("My tyre pressure (optional)"):
     use_tyre = st.checkbox("Check compaction with my tyre pressure", key="use_tyre",
                            help="Without it FieldGo uses the default table (status x axle load). With it: stress in "
                                 "the soil vs soil strength today, Terranimo-style.")
