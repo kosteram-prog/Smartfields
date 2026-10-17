@@ -1,0 +1,37 @@
+"""Illustrative farm layout: 30 fields, all real parcels of the demo farm, closed polygons."""
+import json
+from pathlib import Path
+
+import pytest
+
+LAYOUT = Path(__file__).resolve().parents[1] / "app" / "assets" / "farm_layout.json"
+
+
+def test_layout_has_30_closed_fields():
+    lay = json.loads(LAYOUT.read_text())
+    assert len(lay["fields"]) == 30
+    assert len({f["parcel_id"] for f in lay["fields"]}) == 30
+    for f in lay["fields"]:
+        assert f["xs"][0] == f["xs"][-1] and f["ys"][0] == f["ys"][-1]
+    for k in ("road", "stream", "wood", "farmyard", "village"):
+        assert k in lay
+
+
+@pytest.mark.needs_data
+def test_layout_parcels_exist_and_cover_all_autumn():
+    from engine import data
+    farm = data.load_farm("FARM-13525")
+    ids = {f["parcel_id"] for f in json.loads(LAYOUT.read_text())["fields"]}
+    assert ids <= set(farm.parcel_id)
+    assert set(farm[farm.crop.isin(["BARL", "COWT", "RAPE"])].parcel_id) <= ids
+
+
+def test_figure_builds_with_statuses():
+    import sys
+    import pandas as pd
+    sys.path.insert(0, str(LAYOUT.parents[1]))
+    from components import farm_map
+    ids = [f["parcel_id"] for f in farm_map.layout()["fields"]]
+    farm = pd.DataFrame({"parcel_id": ids, "crop": "BARL", "area_ha": 6.0, "status": "GO"})
+    fig = farm_map.figure(farm)
+    assert sum(1 for t in fig.data if t.fill == "toself") >= 30

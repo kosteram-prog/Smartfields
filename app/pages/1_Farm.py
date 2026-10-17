@@ -1,4 +1,4 @@
-"""Farm page (spec 9.1): headline numbers and parcel tiles coloured by the replay day's status (no pseudo-map, F7)."""
+"""Farm page: headline numbers, farm map and today's plan coloured by the replay day's status."""
 import pandas as pd
 import streamlit as st
 
@@ -57,31 +57,15 @@ if REAL:
 
 # ------------------------------------------------------------------ A2: map of the farm coloured by status
 if REAL:
-    import plotly.graph_objects as go
-
-    @st.cache_data
-    def _shapes(h):
-        return data.load_parcel_shapes(h)
-
-    shapes = _shapes(holding).merge(farm[["parcel_id", "crop", "area_ha", "clay_pct", "sand_pct", "status"]],
-                                    on="parcel_id")
-    fig = go.Figure()
-    for r in shapes.itertuples():
-        colour = ui.STATUS_COLORS.get(r.status, ui.STATUS_COLORS["not available"])
-        label = ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct)
-        fig.add_trace(go.Scatter(x=r.xs, y=r.ys, fill="toself", mode="lines", line=dict(color="white", width=1),
-                                 fillcolor=colour, opacity=0.85, hoveron="fills", name=label,
-                                 text=f"{label}<br><b>{r.status}</b>", hoverinfo="text", showlegend=False))
-        fig.add_annotation(x=sum(r.xs[:-1]) / (len(r.xs) - 1), y=sum(r.ys[:-1]) / (len(r.ys) - 1),
-                           text=ui.field_name(r.parcel_id).replace("Field ", ""), showarrow=False,
-                           font=dict(size=9, color="white"))
-    fig.update_xaxes(visible=False)
-    fig.update_yaxes(visible=False, scaleanchor="x", scaleratio=1)
-    fig.update_layout(height=520, margin=dict(l=0, r=0, t=0, b=0), plot_bgcolor="#f3f1ea")
-    st.markdown("#### Farm map: who can go where today")
-    st.plotly_chart(fig, width="stretch")
-    st.caption("Parcel layout of the organisers' synthetic farm (local grid). Hover a field for crop, soil and status. "
-               "In production: the farmer's own IACS field boundaries.")
+    from components import farm_map
+    lbl = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
+    fig = farm_map.figure(farm, height=560, labels=lbl)
+    if fig is not None:
+        st.markdown("#### Farm map: who can go where today")
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        st.caption("Illustrative layout of 30 of the farm's fields (the organisers' parcel shapes are placeholders). "
+                   "Field sizes on the map are illustrative; crop, real area, soil and status on hover come from the "
+                   "data and the engine. In production: the farmer's own IACS field boundaries.")
 
 # ------------------------------------------------------------------ A1: today's plan for the whole farm
 if REAL:
