@@ -32,7 +32,7 @@ def _centroid(xs, ys):
     return (cx / (3 * a), cy / (3 * a)) if a else (sum(xs) / len(xs), sum(ys) / len(ys))
 
 
-def figure(farm, height=620, labels=None, title=None) -> go.Figure | None:
+def figure(farm, height=620, labels=None, title=None, selected=None) -> go.Figure | None:
     """farm: DataFrame with parcel_id, crop, area_ha, status; labels: parcel_id -> hover text (optional)."""
     lay = layout()
     if lay is None or "image" not in lay:
@@ -50,10 +50,14 @@ def figure(farm, height=620, labels=None, title=None) -> go.Figure | None:
         status = r.get("status", "not available")
         num = f["parcel_id"][-3:]
         hover = (labels or {}).get(f["parcel_id"], f"Plot {num} · {CROP_SHORT.get(r.crop, r.crop)} · {r.area_ha:.1f} ha")
+        chosen = selected is not None and str(f["parcel_id"]) == str(selected)
         fig.add_trace(go.Scatter(x=f["xs"], y=f["ys"], fill="toself", mode="lines",
                                  fillcolor=FILL.get(status, FILL["not available"]),
-                                 line=dict(color=COLORS.get(status, COLORS["not available"]), width=2.5),
-                                 hoveron="fills", hoverinfo="text", text=f"{hover}<br><b>{status}</b>", showlegend=False))
+                                 line=dict(color="#ffffff" if chosen else COLORS.get(status, COLORS["not available"]),
+                                           width=5 if chosen else 2.5),
+                                 hoveron="fills", hoverinfo="text",
+                                 text=f"{hover}<br><b>{status}</b>" + (" · selected" if chosen else ""),
+                                 showlegend=False))
         cx, cy = _centroid(f["xs"], f["ys"])
         fig.add_annotation(x=cx, y=cy, text=f"<b>{num}</b>", showarrow=False, font=dict(size=11, color="white"),
                            bgcolor="rgba(0,0,0,0.45)", borderpad=2)
@@ -71,3 +75,26 @@ def figure(farm, height=620, labels=None, title=None) -> go.Figure | None:
                       plot_bgcolor="rgba(0,0,0,0)", legend=dict(orientation="h", y=1.0, yanchor="bottom", x=0.0,
                                                        bgcolor="rgba(0,0,0,0)"), dragmode="pan")
     return fig
+
+
+def render_decision(farm=None, selected=None, real: bool = False, height: int = 480) -> None:
+    """Today: show where you can go, then pick a plot. Stub mode uses the demo picture."""
+    import streamlit as st
+
+    st.markdown("**Which plot can you go on?**")
+    st.caption("Green = go · yellow = only with care · red = stay off. "
+               "Pick a plot in the list above to see the verdict for that field.")
+    fig = None
+    if real and farm is not None and "status" in getattr(farm, "columns", []):
+        fig = figure(farm, height=height, selected=selected)
+    if fig is not None:
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        return
+    demo = ASSETS / "farm_map_demo.jpg"
+    if demo.is_file():
+        st.image(str(demo), width="stretch")
+        pick = f" Selected: plot {str(selected)[-3:]}." if selected else ""
+        st.caption("Demo holding on 11 Oct 2016, tractor and drill (M2): 16 plots GO, 7 CAUTION, 7 NO-GO. "
+                   "The place is illustrative (GUGiK, geoportal.gov.pl)." + pick)
+    else:
+        st.info("Farm map is missing (app/assets/farm_map_demo.jpg).")

@@ -4,7 +4,7 @@ import streamlit as st
 
 import config
 import ui
-from components import compaction_panel, go_now_line, mark_done, money_line, plan_card
+from components import compaction_panel, farm_map, go_now_line, mark_done, money_line, plan_card
 from engine import params as prm
 
 replay = ui.shell("Today")
@@ -18,6 +18,16 @@ if REAL:
         f = data.load_farm(holding)
         f["autumn"] = f.crop.isin(["BARL", "COWT", "RAPE"])
         return f.sort_values(["autumn", "clay_pct"], ascending=[False, False])
+
+    @st.cache_data(show_spinner="Status of every plot...")
+    def all_status(holding, date, machine):
+        from engine import soil, status
+        f = data.load_farm(holding)
+        sw = soil.soil_water(f, data.load_weather(f.nuts3.iloc[0]))
+        sw = sw[sw.date == pd.Timestamp(date)]
+        lc, _ = status.axle_load_class(machine, 100)
+        st_ = status.status_table(sw, f, lc)
+        return dict(zip(st_.parcel_id, st_.status))
 else:
     from engine import stubs
     from engine.stubs import today as run_today
@@ -72,6 +82,11 @@ t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, 
            tyre_bar, float(bd) if (tyre_bar and bd) else None)
 stub = not REAL
 when = pd.Timestamp(replay)
+if REAL:
+    farm = farm.assign(status=farm.parcel_id.map(all_status(st.session_state["farm"], when, machine))
+                       .fillna("not available"))
+
+farm_map.render_decision(farm, selected=parcel, real=REAL, height=460)
 
 # ------------------------------------------------------------------ verdict, then outlook, then why
 c_status, c_next = st.columns([1, 1.25], gap="large")

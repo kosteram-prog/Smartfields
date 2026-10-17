@@ -1,4 +1,4 @@
-"""Farm page: headline numbers, farm map and today's plan coloured by the replay day's status."""
+"""Farm page: headline numbers and today's plan coloured by the replay day's status."""
 import pandas as pd
 import streamlit as st
 
@@ -54,30 +54,6 @@ if REAL:
     farm = farm.assign(status=farm.parcel_id.map(statuses).fillna("not available"))
     st.caption(f"Status on {pd.Timestamp(replay):%d %b %Y} for {prm.MACHINES[machine]['profile'].lower()} "
                f"(class {lc}, replay weather).")
-
-# ------------------------------------------------------------------ A2: map of the farm coloured by status
-if REAL:
-    from components import farm_map
-    lbl = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
-    fig = farm_map.figure(farm, height=640, labels=lbl)
-    if fig is not None:
-        st.markdown("#### Farm map: who can go where today")
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-        st.caption("30 of the farm's plots drawn on outlines traced from a real orthophoto of rural Wielkopolska "
-                   "(GUGiK, geoportal.gov.pl, open data). The location is illustrative: the organisers' plot shapes "
-                   "are placeholders. Crop, real area, soil and status on hover come from the data and the engine. "
-                   "In production: the farmer's own IACS field boundaries.")
-else:
-    demo = config.ASSETS_DIR / "farm_map_demo.jpg"
-    st.markdown("#### Farm map: who can go where")
-    if demo.is_file():
-        st.image(str(demo), width="stretch")
-        st.caption("Demo holding FARM-13525 on 11 Oct 2016, tractor and drill (M2): "
-                   "16 plots GO, 7 CAUTION, 7 NO-GO. Outlines traced from a public orthophoto "
-                   "(GUGiK, geoportal.gov.pl). The place is illustrative; the colours are the FieldGo engine. "
-                   "With the organisers' data extracts this map follows the replay date and the machine above.")
-    else:
-        st.info("Farm map image is missing (app/assets/farm_map_demo.jpg).")
 
 # ------------------------------------------------------------------ A1: today's plan for the whole farm
 if REAL:
