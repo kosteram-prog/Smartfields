@@ -42,6 +42,6 @@ nav = st.navigation({
              st.Page(P + "6_Loss.py", title="Loss calculator", icon="💶")],
     "Data": [st.Page(P + "5_About.py", title="About the data", icon="ℹ️"),
              st.Page(P + "7_Satellite.py", title="Plot zones", icon="🛰️"),
-             st.Page(P + "8_Connect.py", title="Integrations", icon="🔌")],
+             st.Page(P + "8_Connect.py", title="Connect", icon="🔌")],
 })
 nav.run()
