@@ -31,7 +31,6 @@ if REAL:
 else:
     from engine import stubs
     from engine.stubs import today as run_today
-    st.warning("FIELDGO_DATA_DIR is not set: showing stub numbers.")
 
     def parcels(holding):
         return stubs.load_farm(holding)

@@ -12,7 +12,6 @@ holding = st.session_state["farm"]
 
 if not REAL:
     from engine import stubs
-    st.warning("FIELDGO_DATA_DIR is not set: showing stub numbers.")
     fs, farm = stubs.farm_summary(holding), stubs.load_farm(holding)
     farm["status"] = "not available"
 else:

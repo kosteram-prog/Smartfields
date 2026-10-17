@@ -16,7 +16,6 @@ if REAL:
     from engine.season import season as run_season
 else:
     from engine.stubs import season as run_season
-    st.warning("FIELDGO_DATA_DIR is not set: showing stub numbers. Set it to the extracts folder and restart.")
 
 
 @st.cache_data(show_spinner="Simulating 10 autumns...")
