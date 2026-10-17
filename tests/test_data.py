@@ -13,7 +13,7 @@ from engine import data
 ROOT = "dg-agri-hackathon-datasets/"
 DEMO, ORGANIC, OTHER = "FARM-13525", "FARM-16285", "FARM-00001"
 EXPECTED_FILES = ["wx", "holding", "parcels", "planting", "harvest", "fertilisation", "plant_protection",
-                  "irrigation", "prices", "labour"]
+                  "irrigation", "prices", "labour", "regional_soil"]
 
 WX_COLS = ("nuts_version,nuts0_id,nuts2_id,nuts3_id,country_code,date,centroid_latitude,centroid_longitude,"
            "temperature_min_c,temperature_mean_c,temperature_max_c,precipitation_mm,relative_humidity_pct,"
@@ -64,6 +64,10 @@ def make_archive(path):
         "synthetic/synthetic_irrigation_2017.csv":
             "irrigation_id,parcel_id,year,irrigated,water_mm\n1,PARCEL-0149869,2017,0,0.0\n2,PARCEL-0000001,2017,1,50.0\n",
         "synthetic/synthetic_market_price.csv": "price_id,product,year,month,price_eur_t\n1,COWT,2017,7,247.0\n2,BARL,2017,7,225.0\n",
+        "soil/soil_soil_topsoil_ready.csv":
+            "nuts_version,nuts0_id,nuts2_id,nuts3_id,country_code,topsoil_ph_h2o,topsoil_organic_carbon_g_kg,"
+            "topsoil_nitrogen_g_kg,topsoil_bulk_density_kg_dm3,topsoil_clay_g_kg,topsoil_sand_g_kg,topsoil_silt_g_kg\n"
+            "2024,PL,PL41,PL418,PL,6.3,23.7,1.5,1.4,94.3,726.4,179.3\n2024,DE,DE24,DE242,DE,6.0,20.0,1.5,1.4,200,400,400\n",
         "combined/combined_labour_summary.csv":
             "holding_id,static_labour_record_count,static_labour_awu,static_labour_annual_hours\n"
             f"{DEMO},2,4.89,8800\n{OTHER},2,1.19,2144\n",
@@ -193,3 +197,11 @@ def test_real_weather_has_every_day_2015_2024(nuts3):
 def test_real_organic_example_farm_present():
     farm = data.load_farm(ORGANIC)
     assert len(farm) > 0 and (farm.organic == 1).all()
+
+
+def test_regional_soil_as_parcel_texture(extracted):
+    r = data.load_regional_soil("PL418")
+    assert r["clay_pct"] == pytest.approx(9.4) and r["sand_pct"] == pytest.approx(72.6)
+    assert r["om_pct"] == pytest.approx(23.7 * 1.724 / 10, abs=0.01) and r["origin"] == "modelled"
+    with pytest.raises(ValueError):
+        data.load_regional_soil("DE242")                    # filtered out at extraction

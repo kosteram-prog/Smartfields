@@ -42,5 +42,35 @@ def render(holding_id: str, campaign=2024) -> None:
             st.markdown(f"**Suggested fix:** {c['fix']}")
             with st.expander(f"Show the {c['n_rows']} rows"):
                 st.dataframe(c["rows"], hide_index=True, width="stretch")
+    if REAL:
+        _wet_days(holding_id, campaign)
     st.caption("Records are synthetic (organisers' dataset); weather for R3/R6 is regional AgERA5. "
                "Plant-protection dose units are flagged 'unresolved L or kg/ha' by the organisers.")
+
+
+@st.cache_data(show_spinner="Checking every operation against FieldGo's day status...")
+def _wet(holding_id, campaign):
+    from engine.lint import wet_day_operations
+    return wet_day_operations(holding_id, campaign)
+
+
+def _wet_days(holding_id: str, campaign) -> None:
+    w = _wet(holding_id, campaign)
+    st.subheader("Operations on days FieldGo rates NO-GO")
+    if not w["n_assessed"]:
+        st.caption("No operations with weather in this period.")
+        return
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        ui.metric("Operations checked", f"{w['n_assessed']:,}", w["origin"], False,
+                  help="Operations with weather data (AgERA5 ends 31 Dec 2024)")
+    with c2:
+        ui.metric("On a NO-GO day", f"{w['share_nogo']:.0%}", w["origin"], False)
+    with c3:
+        ui.metric("On a CAUTION day", f"{w['share_caution']:.0%}", w["origin"], False)
+    by = w["by_operation"].rename(columns={"table": "operation", "share_nogo": "share NO-GO"})
+    st.dataframe(by, hide_index=True, width="stretch",
+                 column_config={"share NO-GO": st.column_config.ProgressColumn(format="percent", min_value=0, max_value=1)})
+    with st.expander("Show the operations on NO-GO days"):
+        st.dataframe(w["rows"][w["rows"].status == "NO-GO"], hide_index=True, width="stretch")
+    st.caption(w["note"])

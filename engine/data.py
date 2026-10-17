@@ -40,7 +40,7 @@ def _index_zip(z: zipfile.ZipFile) -> dict[str, str]:
     """Map 'folder/file.csv' (relative to the archive root) -> member name, whatever the root folder is."""
     out = {}
     for name in z.namelist():
-        m = re.search(r"(?:^|/)(weather|synthetic|combined)/([^/]+\.csv)$", name)
+        m = re.search(r"(?:^|/)(weather|synthetic|combined|soil)/([^/]+\.csv)$", name)
         if m:
             out[f"{m.group(1)}/{m.group(2)}"] = name
     return out
@@ -123,6 +123,10 @@ def extract(zip_path, out_dir) -> dict[str, int]:
         # 4. prices (all rows, small) and labour (demo holdings)
         save("prices", pd.read_csv(z.open(index["synthetic/synthetic_market_price.csv"]), na_values=NA_VALUES))
         save("labour", _filtered(z, index["combined/combined_labour_summary.csv"], "holding_id", set(DEMO_HOLDINGS)))
+
+        # 5. regional topsoil (SoilGrids, modelled) for the weather regions: soil of the real demo field
+        if "soil/soil_soil_topsoil_ready.csv" in index:
+            save("regional_soil", _filtered(z, index["soil/soil_soil_topsoil_ready.csv"], "nuts3_id", set(WEATHER_NUTS3)))
     return summary
 
 
@@ -171,6 +175,19 @@ def load_farm(holding_id: str = "FARM-13525") -> pd.DataFrame:
         "nuts3": p.nuts3, "organic": p.organic, "origin": "synthetic"})
     out = soil.add_hydraulics(out)
     return out.sort_values("parcel_id").reset_index(drop=True)
+
+
+def load_regional_soil(nuts3: str = "PL418") -> dict:
+    """Regional SoilGrids topsoil (origin: modelled) as parcel-style texture: clay %, sand %, OM % (OC x 1.724)."""
+    s = _table("regional_soil")
+    s = s[s.nuts3_id == nuts3]
+    if s.empty:
+        raise ValueError(f"No regional soil for {nuts3}. Available: {', '.join(WEATHER_NUTS3)}")
+    r = s.iloc[0]
+    return {"nuts3": nuts3, "clay_pct": round(float(r.topsoil_clay_g_kg) / 10, 1),
+            "sand_pct": round(float(r.topsoil_sand_g_kg) / 10, 1),
+            "om_pct": round(float(r.topsoil_organic_carbon_g_kg) * 1.724 / 10, 2),
+            "origin": "modelled", "source": "SoilGrids 2.0 (ISRIC, CC BY 4.0), NUTS3 topsoil mean"}
 
 
 def load_operations(table: str, holding_id: str = "FARM-13525") -> pd.DataFrame:

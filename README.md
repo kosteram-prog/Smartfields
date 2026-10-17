@@ -26,9 +26,11 @@ Demo: farm **FARM-13525** (PL415, Poznań region), **replay mode**: historical A
 | `engine/today.py` | Today: field access + operation suitability, 72-h strip, confidence | 7.7, 7.9 |
 | `engine/plan.py` | Safer plan (other parcel, lighter load, lighter machine, other day), each with its cost | 7.8 |
 | `engine/records.py` | Records with conditions; BBCH estimate | 7.11-7.12 |
-| `engine/lint.py` | RecordLint R1-R6 grouped into root causes | 7.13 |
+| `engine/lint.py` | RecordLint R1-R6 grouped into root causes; operations on NO-GO days | 7.13 |
 | `engine/ncheck.py` | N-loss risk after fertilising (prototype) | 6.7, 7.10 |
 | `engine/explain.py` | Plain-language explanation: template; optional AI rewrite that cannot change values (`ANTHROPIC_API_KEY`) | 7.14 |
+| `engine/validate.py` | Model vs Sentinel-1 radar on the real Gasawy field (Oct 2016) | 8 |
+| `engine/sensitivity.py` | One assumption at a time: P, 2016 finish, workable days, contractor, cost, demo statuses | 11 |
 | `engine/stubs.py` | Placeholder outputs for every contract function (used until a module exists) | - |
 
 ## Run it (Windows, Python 3.10+; tested on 3.10 and 3.13)

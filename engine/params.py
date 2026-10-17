@@ -277,3 +277,33 @@ INTEGRATIONS = {
 # ---------------------------------------------------------------- PROPOSED: EPPO crop codes for records (spec 6.5, 7.11)
 EPPO_CODES = P({"COWT": "TRZAW", "BARL": "HORVW", "RAPE": "BRSNW", "MAIZ": "ZEAMX", "SUNF": "HELAN",
                 "HAY": "POAPR", "OLIV": "OLVEU"}, "", "EPPO Global Database: verify each code before submission")
+
+# ---------------------------------------------------------------- B: validation, wet-day operations, sensitivity (17 Oct)
+REAL_FIELD = {
+    "name": P("Gasawy 28 (302407_5.0805.28)", "", "GUGiK ULDK; farmer consent confirmed by Marek (14 Oct)", "real"),
+    "area_ha": P(80.7, "ha", "GUGiK ULDK", "real"),
+    "nuts3": P("PL418", "", "AgERA5 region of the field (rain practically identical to PL415 in Oct 2016)", "real"),
+}
+# Field-mean Sentinel-1 VV backscatter (gamma0, dB), Oct 2016; pre-event test 14 Oct (Lamia), CDSE Process API.
+S1_GASAWY_VV = P([
+    ("2016-09-29", "asc A", -12.6), ("2016-09-30", "asc B", -11.8), ("2016-10-05", "asc A", -7.4),
+    ("2016-10-06", "asc B", -6.0), ("2016-10-11", "asc A", -7.2), ("2016-10-14", "desc", -8.1),
+    ("2016-10-17", "asc A", -7.0), ("2016-10-18", "asc B", -8.3)],
+    "dB", "Sentinel-1 GRD via Copernicus Data Space; pole-gasawy/field-gasawy-sentinel-test.md", "real")
+WET_DAY_OPS = {   # which default machine (load class) did each recorded operation (assumption: records have no machine)
+    "planting": P("M2", "", "drill (sowing)"),
+    "fertilisation_MINERAL": P("M1", "", "light tractor + mounted spreader"),
+    "fertilisation_ORGANIC": P("M6", "", "slurry tanker"),
+    "plant_protection": P("M4", "", "self-propelled sprayer"),
+    "harvest": P("M5", "", "combine harvester"),
+}
+SENSITIVITY_VARIANTS = P([
+    # (label, kind, value) - applied one at a time to the base case (spec 6.4 / pre-event sensitivity test)
+    ("Base", None, None),
+    ("Thresholds -0.05", "thresholds", -0.05), ("Thresholds +0.05", "thresholds", 0.05),
+    ("No texture adjustment", "texture", 0.0),
+    ("Transient term k = 0", "transient_k", 0.0), ("Transient term k = 0.2", "transient_k", 0.2),
+    ("CAUTION = 0 day", "caution_weight", 0.0), ("CAUTION = 1 day", "caution_weight", 1.0),
+    ("Rain override today >= 2 mm", "rain_today", 2.0), ("Rain override today >= 10 mm", "rain_today", 10.0),
+    ("Previous-24 h override >= 5 mm", "rain_prev24", 5.0),
+], "", "pre-event sensitivity test (bucket-model-test-FARM-13525.md)")

@@ -106,3 +106,13 @@ def test_real_organic_example():
     res = lint.lint_records("FARM-16285", None)
     by = {c["rule"]: c["n_rows"] for c in res["cards"]}
     assert by["R2-fert"] == 1316 and by["R2-herb"] == 229
+
+
+@pytest.mark.needs_data
+def test_real_wet_day_operations_2024():
+    w = lint.wet_day_operations("FARM-13525", 2024)
+    assert w["n_operations"] == 279 and w["n_assessed"] == 279
+    assert 0.10 < w["share_nogo"] < 0.30
+    assert set(w["by_operation"].table) == {"planting", "fertilisation", "plant_protection", "harvest"}
+    # it is a separate analysis: the root-cause numbers of the demo stay the same
+    assert lint.lint_records("FARM-13525", 2024)["n_flags"] == 143

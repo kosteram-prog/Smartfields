@@ -64,6 +64,73 @@ with tabs[5]:
                "your own machine data raise confidence.")
 ui.show_origin("assumption", False)
 
+import config  # noqa: E402
+
+if config.data_dir_or_none() is not None:
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    from engine import sensitivity, validate
+
+    st.subheader("Does the model agree with the satellite?")
+
+    @st.cache_data(show_spinner="Comparing with Sentinel-1...")
+    def _radar():
+        return validate.radar_vs_model()
+
+    r = _radar()
+    f = r["field"]
+    st.caption(f"Real field {f['name']}, {f['area_ha']} ha near Poznań, regional SoilGrids topsoil (clay {f['clay_pct']}%, "
+               f"sand {f['sand_pct']}%, OM {f['om_pct']}%), AgERA5 {f['nuts3']} weather, the same soil-water model as "
+               "the demo farm, compared with the field-mean Sentinel-1 radar backscatter (VV).")
+    d, m = r["daily"], r["radar"]
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.25, 0.4, 0.35],
+                        subplot_titles=("Rain (mm/day, AgERA5)", "Model: topsoil wetness RWC_eff (1 = field capacity)",
+                                        "Radar: Sentinel-1 VV (dB, wetter surface = higher)"))
+    fig.add_trace(go.Bar(x=d.date, y=d.rain_today_mm, marker_color="#5b8db8", name="rain",
+                         hovertemplate="%{x|%d %b}: %{y:.1f} mm<extra></extra>"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=d.date, y=d.RWC_eff, mode="lines", line=dict(width=2, color="#6a3d9a"), name="model",
+                             hovertemplate="%{x|%d %b}: RWC_eff %{y:.2f}<extra></extra>"), row=2, col=1)
+    fig.add_hline(y=1.0, line_dash="dot", line_color="#888", row=2, col=1)
+    same = m.orbit == "asc A"
+    for mask, name, sym in ((same, "same orbit (asc A)", "circle"), (~same, "other orbits", "circle-open")):
+        fig.add_trace(go.Scatter(x=m.date[mask], y=m.vv_db[mask], mode="markers", name=name,
+                                 marker=dict(size=10, color="#1f6f8b", symbol=sym, line=dict(width=2, color="#1f6f8b")),
+                                 hovertemplate="%{x|%d %b}: %{y:.1f} dB<extra>" + name + "</extra>"), row=3, col=1)
+    fig.update_layout(height=520, margin=dict(l=10, r=10, t=40, b=10), plot_bgcolor="white",
+                      legend=dict(orientation="h", y=-0.08), showlegend=True)
+    fig.update_xaxes(gridcolor="#eee")
+    fig.update_yaxes(gridcolor="#eee")
+    st.plotly_chart(fig, width="stretch")
+    st.markdown(f"- Both see the rain of 3-6 Oct: the radar rises **{r['vv_change_db']:+.1f} dB** (29 Sep -> 5 Oct), "
+                f"the model goes from a dry topsoil to above field capacity.\n"
+                f"- Rank correlation on all {r['n_dates']} radar dates: **{r['spearman_all']:.2f}**. On the "
+                f"{r['n_same_orbit']} same-orbit dates inside the wet period it is only {r['spearman_same_orbit']:.2f}: "
+                "the model dries the sandy topsoil faster than the radar suggests.\n"
+                "- Radar also responds to roughness and residue, so this is *consistent with the model*, not proof.")
+    ui.show_origin(r["origin"], False)
+
+    st.subheader("How robust are the numbers? (one assumption changed at a time)")
+
+    @st.cache_data(show_spinner="Re-running the season for 11 variants (~10 s)...")
+    def _sens():
+        return sensitivity.run_all()
+
+    if st.toggle("Run the sensitivity table", value=False,
+                 help="Recomputes soil water, statuses, the 10-autumn season and the cost of delay for each variant"):
+        t = _sens().rename(columns={"P": "P(finish by 15 Oct)", "done_2016": "2016 done", "workable_days_2016":
+                                    "workable days 1-21 Oct 2016", "contractor": "contractor for >= 90 % (ha/day)",
+                                    "cost_median": "weather cost, median", "cost_2016": "weather cost, 2016",
+                                    "demo_13oct": "13 Oct: clay L2/L3 · sand L2/L3"})
+        st.dataframe(t, hide_index=True, width="stretch", column_config={
+            "P(finish by 15 Oct)": st.column_config.NumberColumn(format="percent"),
+            "weather cost, median": st.column_config.NumberColumn(format="EUR %.0f"),
+            "weather cost, 2016": st.column_config.NumberColumn(format="EUR %.0f")})
+        st.markdown("**Robust:** P stays 60-100 %, the median-year cost stays a few thousand euro and a contractor "
+                    "helps in every variant. **Not robust:** the cost of a wet autumn like 2016 moves several-fold "
+                    "with the thresholds and the CAUTION rule, so we always show it as a range. G/C/N = GO/CAUTION/NO-GO.")
+        ui.show_origin("modelled+assumption", False)
+
 st.subheader("AI transparency")
 st.info("We used AI coding assistants to build the prototype. All decisions in FieldGo come from transparent rules and "
         "published equations applied to the listed data. An optional AI component rewrites explanations of computed "

@@ -151,3 +151,61 @@ def lint_records(holding_id: str = "FARM-13525", campaign: int | None = None) ->
               for t in ("planting", "harvest", "irrigation", "fertilisation", "plant_protection")}
     holding = {"holding_id": holding_id, "organic": int(farm.organic.iloc[0])}
     return lint(tables, data.load_weather(farm.nuts3.iloc[0]), holding, campaign)
+
+
+# --------------------------------------------------------------------------- B6: operations on NO-GO days
+OP_TABLES = {"planting": ("planting_id", "plant_date", "sowing"), "fertilisation": ("fertilisation_id", "app_date", "fertilising"),
+             "plant_protection": ("pp_id", "app_date", "spraying"), "harvest": ("harvest_id", "harvest_date", "harvest")}
+
+
+def wet_day_operations(holding_id: str = "FARM-13525", campaign: int | None = None) -> dict:
+    """Run every recorded operation through FieldGo's day status (default machine per operation, params.WET_DAY_OPS).
+
+    Separate from the R1-R6 root causes (it does not change n_flags). The synthetic operation dates are random with
+    respect to weather (data quirk 5.4 #2), so this shows what FieldGo would have advised, not farmer behaviour.
+    """
+    from engine import data, soil, status
+    farm = data.load_farm(holding_id)
+    wx = data.load_weather(farm.nuts3.iloc[0])
+    sw = soil.soil_water(farm, wx)
+    rows = []
+    for table, (id_col, date_col, operation) in OP_TABLES.items():
+        ops = data.load_operations(table, holding_id)
+        if campaign is not None:
+            ops = ops[ops["year"] == campaign]
+        for r in ops.itertuples():
+            key = f"{table}_{r.product_type}" if table == "fertilisation" else table
+            machine = prm.WET_DAY_OPS[key].value
+            rows.append({"table": table, "record_id": getattr(r, id_col), "parcel_id": r.parcel_id, "year": r.year,
+                         "date": getattr(r, date_col), "operation": operation, "machine_id": machine,
+                         "load_class": prm.MACHINES[machine]["load_class"]})
+    ops = pd.DataFrame(rows)
+    if ops.empty:
+        return {"n_operations": 0, "n_assessed": 0, "share_nogo": "not available", "by_operation": pd.DataFrame(),
+                "rows": ops, "origin": "synthetic+real+modelled"}
+    ops = ops.merge(sw, on=["parcel_id", "date"], how="left")
+    out = []
+    for (cls, operation), g in ops.groupby(["load_class", "operation"]):
+        ok = g[g.RWC_eff.notna()]
+        if len(ok):
+            stt = status.status_table(ok, farm, cls, 1, operation if operation != "harvest" else "harvest")
+            out.append(stt)
+        miss = g[g.RWC_eff.isna()].assign(status="not available")
+        if len(miss):
+            out.append(miss)
+    res = pd.concat(out, ignore_index=True)
+    assessed = res[res.status != "not available"]
+    by = (assessed.groupby("table").status.value_counts(normalize=False).unstack(fill_value=0)
+          .reindex(columns=["GO", "CAUTION", "NO-GO"], fill_value=0))
+    by["n"] = by.sum(axis=1)
+    by["share_nogo"] = by["NO-GO"] / by["n"]
+    by["machine"] = [" / ".join(sorted(assessed[assessed.table == t].machine_id.unique())) for t in by.index]
+    keep = ["table", "record_id", "parcel_id", "date", "operation", "machine_id", "load_class", "status", "RWC_eff",
+            "rain_today_mm"]
+    return {"n_operations": int(len(res)), "n_assessed": int(len(assessed)),
+            "share_nogo": float((assessed.status == "NO-GO").mean()) if len(assessed) else "not available",
+            "share_caution": float((assessed.status == "CAUTION").mean()) if len(assessed) else "not available",
+            "by_operation": by.reset_index(), "rows": res[keep].sort_values("date").reset_index(drop=True),
+            "origin": "synthetic+real+modelled",
+            "note": "Synthetic operation dates are random with respect to weather: this shows what FieldGo would "
+                    "have advised, not real farmer behaviour. Machine per operation is a default assumption."}
