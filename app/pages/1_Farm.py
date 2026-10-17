@@ -59,13 +59,14 @@ if REAL:
 if REAL:
     from components import farm_map
     lbl = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
-    fig = farm_map.figure(farm, height=560, labels=lbl)
+    fig = farm_map.figure(farm, height=640, labels=lbl)
     if fig is not None:
         st.markdown("#### Farm map: who can go where today")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-        st.caption("Illustrative layout of 30 of the farm's fields (the organisers' parcel shapes are placeholders). "
-                   "Field sizes on the map are illustrative; crop, real area, soil and status on hover come from the "
-                   "data and the engine. In production: the farmer's own IACS field boundaries.")
+        st.caption("30 of the farm's parcels drawn on fields traced from a real orthophoto of rural Wielkopolska "
+                   "(GUGiK, geoportal.gov.pl, open data). The location is illustrative: the organisers' parcel shapes "
+                   "are placeholders. Crop, real area, soil and status on hover come from the data and the engine. "
+                   "In production: the farmer's own IACS field boundaries.")
 
 # ------------------------------------------------------------------ A1: today's plan for the whole farm
 if REAL:

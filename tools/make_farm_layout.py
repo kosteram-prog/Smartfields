@@ -1,77 +1,78 @@
-"""Illustrative field layout for the demo farm (the organisers' parcel shapes are scattered squares).
+"""Farm map on a real orthophoto (Geoportal, GUGiK; open data) with field outlines traced from it.
 
-Creates app/assets/farm_layout.json: 30 fields of the demo farm (all 21 winter-cereal parcels + the 9 largest others)
-placed in a rural landscape (blocks between roads, field tracks, woodland, stream, farmstead, village). Field SIZES on
-the map are illustrative (the real parcels are all 5-9 ha, which looks unlike a real farm); areas, soils, crops and
-every status shown on hover and in the tables come from the data and the engine.
-Run once:  python tools/make_farm_layout.py   (needs FIELDGO_DATA_DIR and `pip install squarify`)
+Creates app/assets/farm_ortho.jpg and app/assets/farm_layout.json. The image shows a real rural area of
+Wielkopolska (the demo region); the 30 outlines were traced from the image (Felzenszwalb segmentation of the
+orthophoto, segments picked by hand, 4 drawn by hand) and are stored in tools/farm_fields_px.json (pixels of the
+1600 x 1040 image, 2.5 m per pixel). Which parcel of the synthetic demo farm is drawn on which field is illustrative:
+greener fields (emerged autumn crops) carry the 21 winter-cereal parcels, the others the 9 largest remaining parcels.
+Every status, crop, area and soil on the map comes from the data and the engine. This is NOT the farm's real location.
+
+Run once:  python tools/make_farm_layout.py   (needs network to geoportal.gov.pl, FIELDGO_DATA_DIR)
 """
+import io
 import json
 import math
+import urllib.request
 from pathlib import Path
 
 import numpy as np
-import squarify
+from PIL import Image, ImageDraw
 
 from engine import data
 
-OUT = Path(__file__).resolve().parents[1] / "app" / "assets" / "farm_layout.json"
-ROT = math.radians(-9)                          # slight rotation: fields rarely face north exactly
-INSET = 7.0                                     # m of headland / track between fields
+ROOT = Path(__file__).resolve().parents[1]
+ASSETS = ROOT / "app" / "assets"
+WMS = ("https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMS/HighResolution?SERVICE=WMS&VERSION=1.3.0"
+       "&REQUEST=GetMap&LAYERS=Raster&STYLES=&CRS=EPSG:3857&FORMAT=image/jpeg&WIDTH=3200&HEIGHT=2080&BBOX={}")
+CENTRE, HALF_M = (52.05, 16.75), (2000, 1300)          # ~4 x 2.6 km
+W, H = 1600, 1040
 
 
-def rot(x, y, cx=1300, cy=850):
-    dx, dy = x - cx, y - cy
-    return cx + dx * math.cos(ROT) - dy * math.sin(ROT), cy + dx * math.sin(ROT) + dy * math.cos(ROT)
+def fetch() -> Image.Image:
+    lat, lon = CENTRE
+    r = 6378137
+    x, y = r * math.radians(lon), r * math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
+    k = 1 / math.cos(math.radians(lat))
+    bbox = f"{x - HALF_M[0] * k},{y - HALF_M[1] * k},{x + HALF_M[0] * k},{y + HALF_M[1] * k}"
+    with urllib.request.urlopen(WMS.format(bbox), timeout=60) as resp:
+        return Image.open(io.BytesIO(resp.read())).convert("RGB")
 
 
-RNG = np.random.default_rng(13525)
-SIZE_FACTORS = [2.6, 0.5, 1.4, 0.8, 3.1, 0.45, 1.1, 1.9, 0.6, 1.0]   # varied, deterministic
+def greenness(img: np.ndarray, poly) -> float:
+    m = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(m).polygon([tuple(p) for p in poly], fill=1)
+    px = img[np.asarray(m, bool)].astype(float)
+    return float((px[:, 1] - px[:, 0]).mean())
 
 
-def poly_rect(x, y, w, h):
-    j = lambda: RNG.uniform(-10, 10)  # noqa: E731  (slightly irregular corners)
-    pts = [(x + INSET + j(), y + INSET + j()), (x + w - INSET + j(), y + INSET + j()),
-           (x + w - INSET + j(), y + h - INSET + j()), (x + INSET + j(), y + h - INSET + j())]
-    pts = [rot(px, py) for px, py in pts]
-    return [round(p[0], 1) for p in pts + pts[:1]], [round(p[1], 1) for p in pts + pts[:1]]
+def area_px(poly) -> float:
+    x, y = np.asarray(poly).T
+    return 0.5 * abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
 
 def main():
+    img = fetch().resize((W, H), Image.LANCZOS)
+    img.save(ASSETS / "farm_ortho.jpg", quality=82)
+    arr = np.asarray(img)
+    polys = [[[min(max(x, 0), W), min(max(y, 0), H)] for x, y in p]
+             for p in json.loads((ROOT / "tools" / "farm_fields_px.json").read_text()).values()]
     farm = data.load_farm("FARM-13525")
-    autumn = farm[farm.crop.isin(["BARL", "COWT", "RAPE"])]
+    autumn = farm[farm.crop.isin(["BARL", "COWT", "RAPE"])].sort_values("area_ha", ascending=False)
     others = farm[~farm.crop.isin(["BARL", "COWT", "RAPE"])].nlargest(9, "area_ha")
-    sel = autumn.sort_values("parcel_id")
-    west, east = sel.iloc[::3], sel.drop(sel.index[::3])            # spread barley/wheat over two blocks
-    blocks = [  # (x, y, w, h) in m, parcels
-        ((300, 930, 1100, 760), west),
-        ((1480, 930, 1080, 480), east),
-        ((300, 170, 2300, 640), others),
-    ]
+    by_green = sorted(polys, key=lambda p: -greenness(arr, p))
+    green, bare = by_green[:len(autumn)], by_green[len(autumn):]
     fields = []
-    for (bx, by, bw, bh), parcels in blocks:
-        parcels = parcels.sort_values("area_ha", ascending=False)
-        vis = [a * SIZE_FACTORS[i % len(SIZE_FACTORS)] for i, a in enumerate(parcels.area_ha)]
-        order = np.argsort(vis)[::-1]
-        parcels, vis = parcels.iloc[order], [vis[i] for i in order]
-        sizes = squarify.normalize_sizes(vis, bw, bh)
-        rects = squarify.squarify(sizes, bx, by, bw, bh)
-        for r, p in zip(rects, parcels.itertuples()):
-            xs, ys = poly_rect(r["x"], r["y"], r["dx"], r["dy"])
-            fields.append({"parcel_id": p.parcel_id, "xs": xs, "ys": ys})
-    t = np.linspace(0, 2600, 60)
-    road = [rot(x, 870 + 25 * math.sin(x / 380)) for x in t]
-    track = [rot(1440, y) for y in np.linspace(880, 1720, 10)]
-    stream = [rot(x, 60 + 30 * math.sin(x / 260)) for x in np.linspace(0, 2750, 60)]
-    wood = [rot(x, y) for x, y in [(1500, 1440), (2560, 1430), (2640, 1760), (1560, 1780), (1480, 1600), (1500, 1440)]]
-    lane = [rot(x, y) for x, y in [(175, 880), (175, 940)]]
-    yard = [rot(x, y) for x, y in [(120, 930), (230, 930), (230, 1060), (120, 1060), (120, 930)]]
-    village = [rot(x, y) for x, y in [(30, 1150), (230, 1180), (240, 1700), (20, 1700), (30, 1150)]]
-    sp = lambda pts: {"xs": [round(p[0], 1) for p in pts], "ys": [round(p[1], 1) for p in pts]}  # noqa: E731
-    OUT.write_text(json.dumps({"note": "Illustrative layout; field sizes on the map are illustrative.",
-                               "fields": fields, "road": sp(road), "track": sp(track), "stream": sp(stream),
-                               "wood": sp(wood), "lane": sp(lane), "farmyard": sp(yard), "village": sp(village)}))
-    print(len(fields), "fields ->", OUT)
+    for group, parcels in ((green, autumn), (bare, others)):
+        for poly, pid in zip(sorted(group, key=lambda p: -area_px(p)), parcels.parcel_id):
+            fields.append({"parcel_id": pid, "xs": [p[0] for p in poly] + [poly[0][0]],
+                           "ys": [p[1] for p in poly] + [poly[0][1]]})
+    (ASSETS / "farm_layout.json").write_text(json.dumps({
+        "image": "farm_ortho.jpg", "width": W, "height": H, "m_per_px": 2.5,
+        "attribution": "Orthophoto: GUGiK (geoportal.gov.pl), open data",
+        "note": "Real orthophoto of a rural area in Wielkopolska; outlines traced from it. Illustrative location: "
+                "not the demo farm's real fields. Status, crop, area and soil come from the data and the engine.",
+        "fields": fields}))
+    print(len(fields), "fields")
 
 
 if __name__ == "__main__":

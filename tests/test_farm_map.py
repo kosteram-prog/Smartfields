@@ -1,4 +1,4 @@
-"""Illustrative farm layout: 30 fields, all real parcels of the demo farm, closed polygons."""
+"""Farm map on a real orthophoto: 30 traced fields, all real parcels of the demo farm, closed polygons."""
 import json
 from pathlib import Path
 
@@ -13,8 +13,10 @@ def test_layout_has_30_closed_fields():
     assert len({f["parcel_id"] for f in lay["fields"]}) == 30
     for f in lay["fields"]:
         assert f["xs"][0] == f["xs"][-1] and f["ys"][0] == f["ys"][-1]
-    for k in ("road", "stream", "wood", "farmyard", "village"):
-        assert k in lay
+    assert (LAYOUT.parent / lay["image"]).exists()
+    assert "GUGiK" in lay["attribution"]
+    for f in lay["fields"]:
+        assert all(0 <= x <= lay["width"] for x in f["xs"]) and all(0 <= y <= lay["height"] for y in f["ys"])
 
 
 @pytest.mark.needs_data
