@@ -40,6 +40,11 @@ def bbch_estimate(crop: str, sowing_date, date, weather: pd.DataFrame | None) ->
     return bbch_from_thermal_time(tt), f"estimated: {tt:.0f} °Cd since sowing (prototype)"
 
 
+def _r(x, n):
+    """Round a number for the record (None and 'not available' stay as they are)."""
+    return round(float(x), n) if isinstance(x, (int, float)) and x == x else x
+
+
 def make_record(today_result: dict, parcel_id: str, operation: str = "sowing", overridden: bool = False,
                 product_name: str | None = None, dose=None, dose_unit: str | None = None) -> dict:
     from engine import data
@@ -60,12 +65,12 @@ def make_record(today_result: dict, parcel_id: str, operation: str = "sowing", o
         "record_id": f"REC-{uuid.uuid4().hex[:8].upper()}", "holding_id": holding, "parcel_id": parcel_id,
         "date": d.date().isoformat(), "operation": operation, "crop": crop,
         "crop_eppo": prm.EPPO_CODES.value.get(crop, NA), "product_name": product_name or "", "dose": dose,
-        "dose_unit": dose_unit or "", "area_ha": float(p["area_ha"]), "bbch_estimated": bbch, "bbch_source": src,
+        "dose_unit": dose_unit or "", "area_ha": round(float(p["area_ha"]), 2), "bbch_estimated": bbch, "bbch_source": src,
         "machine_id": today_result.get("machine_id"), "load_pct": today_result.get("load_pct"),
         "passes": today_result.get("passes"), "decision_status": today_result.get("status"),
-        "overridden": bool(overridden), "rwc_eff": cond.get("rwc_eff"), "precip_mm": cond.get("precip_mm"),
-        "precip_last48h_mm": cond.get("precip_last48h_mm"), "tmin_c": cond.get("tmin_c"),
-        "tmax_c": cond.get("tmax_c"), "wind_m_s": cond.get("wind_m_s"),
+        "overridden": bool(overridden), "rwc_eff": _r(cond.get("rwc_eff"), 2), "precip_mm": _r(cond.get("precip_mm"), 1),
+        "precip_last48h_mm": _r(cond.get("precip_last48h_mm"), 1), "tmin_c": _r(cond.get("tmin_c"), 1),
+        "tmax_c": _r(cond.get("tmax_c"), 1), "wind_m_s": _r(cond.get("wind_m_s"), 1),
         "weather_source": "AgERA5 regional (replay)", "created_at": pd.Timestamp.utcnow().isoformat(timespec="seconds"),
     }
     needs_product = operation in ("spraying", "fertilising")
