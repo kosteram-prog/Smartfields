@@ -25,7 +25,7 @@ def font(size, bold=False):
         return ImageFont.load_default()
 
 
-def main(date="2016-10-11", machine="M2", out=ASSETS / "farm_map_demo.png", image=None):
+def main(date="2016-10-11", machine="M2", out=ASSETS / "farm_map_demo.jpg", image=None):
     date = pd.Timestamp(date)
     f = data.load_farm("FARM-13525")
     sw = soil.soil_water(f, data.load_weather(f.nuts3.iloc[0]))
