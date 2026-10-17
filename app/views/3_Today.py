@@ -46,10 +46,11 @@ def assess(parcel, date, machine, load, passes, operation, observation, custom, 
 
 farm = parcels(st.session_state["farm"])
 label = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
-top = st.columns([3, 2])
-parcel = ui.pick(top[0], "selectbox", "Plot", "parcel", list(farm.parcel_id), format_func=label.get)
-observation = top[1].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
-                                help="A hand test on the wettest spot raises confidence")
+ui.init_state()
+ids = list(farm.parcel_id)
+if st.session_state.get("parcel") not in ids:
+    st.session_state["parcel"] = ids[0]
+parcel = st.session_state["parcel"]
 
 st.markdown("**Which plot can you go on?**")
 bar = st.columns([1.4, 2.6, 1.6, 1, 1.5, 1.6])
@@ -81,15 +82,22 @@ with bar[5].popover("My tyre pressure (optional)"):
     if use_tyre:
         tyre_bar = float(tyre_p)
 
-t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom,
-           tyre_bar, float(bd) if (tyre_bar and bd) else None)
-stub = not REAL
 when = pd.Timestamp(replay)
 if REAL:
     farm = farm.assign(status=farm.parcel_id.map(all_status(st.session_state["farm"], when, machine))
                        .fillna("not available"))
 
 farm_map.render_decision(farm, selected=parcel, real=REAL, height=460)
+
+st.markdown("**If you want the analysis for one plot**")
+detail = st.columns([3, 2])
+parcel = ui.pick(detail[0], "selectbox", "Plot", "parcel", ids, format_func=label.get)
+observation = detail[1].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
+                                   help="A hand test on the wettest spot raises confidence")
+
+t = assess(parcel, when, machine, load, int(passes), operation, observation or None, custom,
+           tyre_bar, float(bd) if (tyre_bar and bd) else None)
+stub = not REAL
 
 # ------------------------------------------------------------------ verdict, then outlook, then why
 c_status, c_next = st.columns([1, 1.25], gap="large")

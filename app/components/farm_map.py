@@ -82,7 +82,7 @@ def render_decision(farm=None, selected=None, real: bool = False, height: int = 
     import streamlit as st
 
     st.caption("Green = go · yellow = only with care · red = stay off. "
-               "The machine above is the one used to colour the fields.")
+               "The machine above colours the fields. Pick a plot below for the full verdict.")
     fig = None
     if real and farm is not None and "status" in getattr(farm, "columns", []):
         fig = figure(farm, height=height, selected=selected)
