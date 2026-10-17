@@ -28,9 +28,9 @@ else:
 
 
 @st.cache_data
-def assess(parcel, date, machine, load, passes, operation, observation, custom, tyre_bar=None):
+def assess(parcel, date, machine, load, passes, operation, observation, custom, tyre_bar=None, subsoil_bd=None):
     kw = {"observation": observation, "custom_machine": custom,
-          "tyre": {"inflation_bar": tyre_bar} if tyre_bar else None} if REAL else {}
+          "tyre": {"inflation_bar": tyre_bar, "subsoil_bd": subsoil_bd} if tyre_bar else None} if REAL else {}
     return run_today(parcel, date, machine, load, passes, operation, **kw)
 
 
@@ -62,11 +62,15 @@ with c2[2].popover("My tyre pressure (optional)"):
                                 "the soil vs soil strength today, Terranimo-style.")
     bar = st.number_input("Inflation pressure (bar)", 0.4, 4.0, 1.6, 0.1, key="tyre_bar",
                           help="Field pressure of the heaviest axle's tyres. Wheel load = axle load / 2.")
+    bd = st.number_input("Subsoil bulk density 30-60 cm (g/cm³, optional)", min_value=1.0, max_value=2.0, value=None,
+                         step=0.05, key="subsoil_bd", placeholder="unknown",
+                         help="From a soil core or SoilGrids (30-60 cm). Dense glacial subsoils are often 1.6-1.8. "
+                              "Without it FieldGo uses a precautionary default strength.")
     if use_tyre:
         tyre_bar = float(bar)
 
 t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom,
-           tyre_bar)
+           tyre_bar, float(bd) if (tyre_bar and bd) else None)
 stub = not REAL
 
 left, right = st.columns([1, 2])

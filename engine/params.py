@@ -398,6 +398,14 @@ COMPACTION = {
     "rule_stress_kpa": P(50.0, "kPa", "Schjønning et al. 2012 (Soil Use Manage.), cited by Calleja-Huerta et al. "
                          "2023: below 50 kPa at 50 cm minimises the risk of subsoil compaction"),
     "rule_depth_m": P(0.5, "m", "Schjønning et al. 2012 (see rule_stress_kpa)"),
+    "rule_min_subsoil_class": P("yellow", "", "decision 17 Oct: the strength-free rule is the main subsoil test - if "
+                                "50 kPa at 50 cm is exceeded the subsoil is at least yellow, whatever the strength estimate"),
+    # Optional subsoil bulk density (farmer, lab or SoilGrids 30-60 cm): subsoil strength from Schjønning & Lamandé 2018
+    # sqrt(Pc) = a + b*BD + c*clay + d*clay*pF (clay as fraction, pF from hPa), as in R package soilphysics::soilStrength2
+    "pc_bd_model": P(dict(a=-26.51, b=25.57, c=-20.40, d=10.26), "sqrt(kPa)",
+                     "Schjønning & Lamandé 2018, Geoderma 320:115-125 (coefficients via soilphysics soilStrength2)"),
+    "pc_bd_pf_range": P((1.78, 3.08), "pF", "model range 60-1200 hPa (soilphysics documentation); pF clamped"),
+    "pc_bd_min_kpa": P(10.0, "kPa", "floor so that the strength stays positive outside the model range"),
     "min_field_bar": P(0.8, "bar", "assumption: lowest field pressure we suggest; the tyre's load/pressure table rules"),
     "pressure_step_bar": P(0.1, "bar", "search step for the 'lower tyre pressure' lever"),
     "class_to_cost_row": P({"green": "GO", "yellow": "CAUTION", "red": "NO-GO"}, "",

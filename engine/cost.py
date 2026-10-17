@@ -322,3 +322,58 @@ def entry_cost_tyre(check: dict, load_class: str, crop: str, area_ha: float, par
     factor = prm.WET_TRAFFIC_LOSS["persistent"]["tyre_subsoil_factor"].value.get(check.get("subsoil"), 0.0)
     out = entry_cost(check["cost_row"], load_class, crop, area_ha, params, persistent_factor=factor)
     return out | {"method": "tyre", "compaction_class": check["overall"]}
+
+
+# --------------------------------------------------------------------------- avoidable losses (17 Oct)
+def avoidable_from_ops(ops: pd.DataFrame, farm: pd.DataFrame, econ: dict) -> pd.DataFrame:
+    """Per year: year-1 and long-term subsoil loss of recorded operations done on CAUTION / NO-GO days.
+
+    ops: date, parcel_id, status, load_class (engine.lint.wet_day_operations rows). Compaction does not add up over
+    passes, so each parcel-year counts its worst operation only.
+    """
+    cols = ["year", "year1_eur", "subsoil_eur_per_year", "n_operations"]
+    bad = ops[ops["status"].isin(["CAUTION", "NO-GO"])]
+    if bad.empty:
+        return pd.DataFrame(columns=cols)
+    f = farm.set_index("parcel_id")
+    rows = []
+    for r in bad.itertuples():
+        if r.parcel_id not in f.index:
+            continue
+        e = entry_cost(r.status, r.load_class, f.at[r.parcel_id, "crop"], f.at[r.parcel_id, "area_ha"], econ)
+        rows.append({"year": pd.Timestamp(r.date).year, "parcel_id": r.parcel_id,
+                     "y1": e["eur"] if _num(e["eur"]) else np.nan,
+                     "per": e.get("persistent_eur_per_year") if _num(e.get("persistent_eur_per_year")) else np.nan})
+    t = pd.DataFrame(rows)
+    pw = t.groupby(["year", "parcel_id"]).agg(y1=("y1", "max"), per=("per", "max"))
+    out = pw.groupby("year").agg(year1_eur=("y1", "sum"), subsoil_eur_per_year=("per", "sum"))
+    out["n_operations"] = t.groupby("year").size()
+    return out.reset_index()[cols]
+
+
+def avoidable_losses(holding_id: str | None = None) -> dict:
+    """What FieldGo could have avoided on this farm: compaction from recorded operations on CAUTION / NO-GO days
+    (year 1 + long-term subsoil part), and the weather part of the sowing-delay cost (median year).
+
+    Upper bound: the synthetic operation dates are random with respect to weather, real farmers already avoid the
+    worst days, and not every operation can be moved (FieldGo also offers lighter machines, loads, tyre pressure).
+    """
+    from engine import data, lint
+    holding_id = holding_id or prm.DEMO["holding_id"].value
+    farm = data.load_farm(holding_id)
+    econ = default_economics(holding_id)
+    w = lint.wet_day_operations(holding_id, None)
+    per_year = avoidable_from_ops(w["rows"], farm, econ)
+    full = per_year["n_operations"] >= 0.5 * per_year["n_operations"].median() if len(per_year) else []
+    years = per_year[full]                                      # skip partial years (e.g. autumn before the first campaign)
+    delay = season_costs({"holding_id": holding_id})["cost"]["median"].get("weather_default", NA)
+    pers = prm.WET_TRAFFIC_LOSS["persistent"]
+    return {"per_year": per_year,
+            "year1_eur_mean": float(years["year1_eur"].mean()) if len(years) else NA,
+            "subsoil_eur_per_year_mean": float(years["subsoil_eur_per_year"].mean()) if len(years) else NA,
+            "subsoil_years": pers["years"].value,
+            "delay_weather_eur_median": delay, "area_ha": float(farm["area_ha"].sum()),
+            "years": [int(y) for y in years["year"]], "unit": "EUR", "origin": "synthetic+real+assumption",
+            "label": "upper bound, illustrative",
+            "note": "Synthetic operation dates are random with respect to weather; real farmers already avoid some "
+                    "of the worst days, so the realistic share is lower (e.g. half)."}

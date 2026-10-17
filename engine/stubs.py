@@ -142,11 +142,11 @@ def status_table(soil_water_df: pd.DataFrame, parcels: pd.DataFrame, load_class:
 
 
 # ----------------------------------------------------------------------------- season (Marek)
-_COMPLETION = {   # extra contractor ha/day -> completion date (day of Oct, Oct 2015..2024); 22 -> 22 Oct
-    0: [9, 22, 16, 9, 16, 16, 10, 9, 13, 11],
-    5: [8, 19, 14, 8, 14, 14, 9, 8, 12, 10],
-    10: [7, 15, 13, 7, 13, 13, 8, 7, 11, 9],
-    15: [6, 13, 11, 6, 11, 11, 7, 6, 10, 8],
+_COMPLETION = {   # extra contractor ha/day -> completion day of Oct 2015..2024 (engine output 17 Oct, FC -10 kPa)
+    0: [9, 17, 16, 9, 15, 11, 10, 9, 13, 11],
+    5: [7, 13, 14, 7, 12, 9, 8, 7, 10, 9],
+    10: [6, 13, 12, 6, 11, 7, 7, 6, 8, 7],
+    15: [5, 13, 10, 5, 9, 6, 6, 5, 6, 6],
 }
 
 
@@ -167,7 +167,7 @@ def season(params: dict | None = None, skip_dates=None, years=None, perfect_weat
     schedule["origin"] = "modelled"
     order = farm.sort_values("priority", ascending=False)
     rng = np.random.RandomState(0)
-    wd = [(y, dt.date(y, 10, d), float(0.6 if y == 2016 and d in (1, 2, 13) else rng.uniform(0, 0.5)))
+    wd = [(y, dt.date(y, 10, d), float(0.6 if y == 2016 and d in (1, 2, 7, 8, 9, 10, 11, 14) else rng.uniform(0, 0.5)))
           for y in YEARS for d in range(1, 32)]
     return {
         "P_by_deadline": {"value": p, "unit": "share", "origin": "modelled"},
@@ -176,17 +176,17 @@ def season(params: dict | None = None, skip_dates=None, years=None, perfect_weat
         "parcel_order": [{"parcel_id": r.parcel_id, "priority": int(r.priority),
                           "reason": "heavy soil first" if r.clay_pct >= 40 else "lighter soil later",
                           "origin": "assumption"} for r in order.itertuples()],
-        "contractor_recommendation": {"extra_ha_day": 5, "ha": 35, "start": "1 Oct", "p_with": 0.9,
+        "contractor_recommendation": {"extra_ha_day": 5, "ha": 33, "start": "1 Oct", "p_with": 1.0,
                                       "origin": "modelled"},
-        "sensitivity": {0.0: 0.6, 0.5: 0.6, 1.0: 1.0, "origin": "modelled"},
+        "sensitivity": {0.0: 0.8, 0.5: 0.8, 1.0: 1.0, "origin": "modelled"},
         "workable_days": pd.DataFrame(wd, columns=["year", "date", "share_go"]).assign(origin="modelled"),
     }
 
 
 # ----------------------------------------------------------------------------- cost (Mirela)
-_WEATHER_DEFAULT = [1400, 10700, 3900, 1400, 3900, 3900, 1200, 1400, 2800, 2400]
+_WEATHER_DEFAULT = [0, 6200, 6600, 0, 6200, 1300, 900, 0, 2600, 1900]   # engine output 17 Oct (barley 0.43 %/day)
 _RATE_X = {"low": 0.5, "default": 1.0, "high": 1.5}
-_LATE_START_DEFAULT = 18000
+_LATE_START_DEFAULT = 11000
 
 
 def season_cost(schedule=None, parcels=None, params: dict | None = None) -> dict:
@@ -200,26 +200,26 @@ def season_cost(schedule=None, parcels=None, params: dict | None = None) -> dict
         rows.append(r)
     per_year = pd.DataFrame(rows).assign(origin="real+synthetic+assumption")
     med = {c: float(per_year[c].median()) for c in per_year.columns if c.startswith(("weather_", "late_start_", "total_"))}
-    return {"per_year": per_year, "median": med, "worst_year": {"year": 2016, "weather_default": 10700.0,
-            "weather_low": 5350.0, "weather_high": 16050.0}, "unit": "EUR",
+    return {"per_year": per_year, "median": med, "worst_year": {"year": 2017, "weather_default": 6600.0,
+            "weather_low": 3300.0, "weather_high": 9900.0}, "unit": "EUR",
             "origin": "real+synthetic+assumption"}
 
 
 def contractor_value(cost_without: dict | None = None, cost_with: dict | None = None,
                      contractor_ha: float | None = 60, contractor_price: float | None = 68) -> dict:
-    out = {"value_median": 5500.0, "value_worst": 10500.0, "worst_year": 2016, "unit": "EUR",
+    out = {"value_median": 4200.0, "value_worst": 6300.0, "worst_year": 2017, "unit": "EUR",
            "origin": "real+synthetic+assumption"}
     if contractor_price is None or contractor_ha is None:
         out.update(net_benefit_median=NA, net_benefit_worst=NA)
     else:
         fee = contractor_ha * contractor_price
-        out.update(contractor_fee=fee, net_benefit_median=5500.0 - fee, net_benefit_worst=10500.0 - fee)
+        out.update(contractor_fee=fee, net_benefit_median=4200.0 - fee, net_benefit_worst=6300.0 - fee)
     return out
 
 
 def wait_cost(date, params: dict | None = None) -> dict:
     d = pd.Timestamp(date).date()
-    eur = {dt.date(2016, 10, 13): 1700.0, dt.date(2016, 10, 17): 1400.0}.get(d, NA)
+    eur = {dt.date(2016, 10, 13): 790.0, dt.date(2016, 10, 17): 150.0}.get(d, NA)
     return {"eur": eur, "unit": "EUR", "days_to_first_go": 1 if eur != NA else NA,
             "origin": "real+synthetic+assumption"}
 
@@ -271,15 +271,15 @@ def today(parcel_id: str, date, machine_id: str = "M2", load_pct: float = 100, p
 
 def safer_plan(parcel_id: str, date, machine_id: str = "M3", load_pct: float = 100, passes: int = 1) -> list[dict]:
     return [
-        {"lever": "other parcel today", "parcel_id": "PARCEL-0149906", "date": pd.Timestamp(date).date(),
-         "load_pct": load_pct, "status": "GO", "reason": "Light sandy soil drains faster (sand 77.6%)",
+        {"lever": "other parcel today", "parcel_id": "PARCEL-0149871", "date": pd.Timestamp(date).date(),
+         "load_pct": load_pct, "status": "GO", "reason": "Light sandy soil drains faster (clay 6.8%)",
          "cost": {"eur": 0.0, "origin": "real+synthetic+assumption"}},
         {"lever": "lighter load", "parcel_id": parcel_id, "date": pd.Timestamp(date).date(),
          "load_pct": 40, "status": "CAUTION", "reason": "Lower axle load class on the same parcel",
          "cost": {"eur": 400.0, "origin": "real+synthetic+assumption"}},
         {"lever": "other day", "parcel_id": parcel_id, "date": pd.Timestamp(date).date() + dt.timedelta(days=1),
          "load_pct": load_pct, "status": "CAUTION", "reason": "Topsoil drier tomorrow, still above GO threshold",
-         "cost": {"eur": 1700.0, "origin": "real+synthetic+assumption"}},
+         "cost": {"eur": 790.0, "origin": "real+synthetic+assumption"}},
     ]
 
 

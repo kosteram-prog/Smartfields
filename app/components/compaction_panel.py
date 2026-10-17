@@ -34,15 +34,17 @@ def render(t: dict) -> None:
         if not c["assessed"]:
             st.caption(c["reason"])
             return
-        a, b, d = st.columns(3)
+        d, a, b = st.columns(3)
+        with d:
+            ui.status_tile("Main test: < 50 kPa at 50 cm", c["rule_50kpa_50cm"].upper(), size="1.2rem",
+                           color_as="GO" if c["rule_50kpa_50cm"] == "met" else "NO-GO")
         with a:
             ui.status_tile("Subsoil (30-80 cm, lasts years)", c["subsoil"].upper(), size="1.2rem",
                            color_as=CLASS_AS[c["subsoil"]])
         with b:
             ui.status_tile("Topsoil (10-20 cm)", c["topsoil"].upper(), size="1.2rem", color_as=CLASS_AS[c["topsoil"]])
-        with d:
-            ui.status_tile("50 kPa at 50 cm", c["rule_50kpa_50cm"].upper(), size="1.2rem",
-                           color_as="GO" if c["rule_50kpa_50cm"] == "met" else "NO-GO")
+        st.caption(f"Subsoil strength: {c.get('subsoil_strength_source', 'default')}. The 50 kPa rule needs no strength "
+                   "estimate (Schjønning et al. 2012); if it is exceeded, the subsoil is at least yellow.")
         st.caption(f"Contact pressure {c['mgp_kpa']:.0f} kPa on {c['area_m2']:.2f} m² · soil wetness pF {c['pf']:.2f} "
                    f"(modelled) · stress at 50 cm {c['stress_50cm_kpa']:.0f} kPa · the 50 kPa line reaches "
                    f"{c['depth_50kpa_m'] * 100:.0f} cm")

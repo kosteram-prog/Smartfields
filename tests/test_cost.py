@@ -129,3 +129,24 @@ def test_persistent_part_missing_price_is_not_available():
 def test_12_entry_cost_missing_price_is_not_available():
     r = cost.entry_cost("NO-GO", "L5", "XXXX", 10.0, params={"yield_t_ha": {"XXXX": 5.0}, "price_eur_t": {}})
     assert r["eur"] == NA
+
+
+# ---------------------------------------------------------------- avoidable losses card (17 Oct)
+def test_avoidable_counts_only_bad_days_and_worst_operation_per_parcel_year():
+    farm = pd.DataFrame({"parcel_id": ["A", "B"], "crop": ["BARL", "BARL"], "area_ha": [10.0, 10.0]})
+    econ = {"yield_t_ha": {"BARL": 5.0}, "price_eur_t": {"BARL": 200.0}}
+    ops = pd.DataFrame({"date": pd.to_datetime(["2020-05-01", "2020-06-01", "2020-07-01", "2020-07-02"]),
+                        "parcel_id": ["A", "A", "A", "B"], "status": ["NO-GO", "CAUTION", "GO", "NO-GO"],
+                        "load_class": ["L5", "L5", "L5", "L2"]})
+    out = cost.avoidable_from_ops(ops, farm, econ).set_index("year")
+    l5 = cost.entry_cost("NO-GO", "L5", "BARL", 10.0, econ)
+    assert out.loc[2020, "year1_eur"] == pytest.approx(l5["eur"])                  # A: worst of NO-GO and CAUTION
+    assert out.loc[2020, "subsoil_eur_per_year"] == pytest.approx(l5["persistent_eur_per_year"])
+    assert out.loc[2020, "n_operations"] == 3                                     # GO day not counted
+
+
+@pytest.mark.needs_data
+def test_real_avoidable_losses_demo_farm():
+    a = cost.avoidable_losses("FARM-13525")
+    assert 8000 <= a["year1_eur_mean"] <= 13000 and 2500 <= a["subsoil_eur_per_year_mean"] <= 5000
+    assert a["years"] == list(range(2017, 2025))

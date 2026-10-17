@@ -83,12 +83,44 @@ st.dataframe(t.sort_values(["status", "go_now_eur"], ascending=[False, False]), 
                             "area_ha": st.column_config.NumberColumn("Area (ha)", format="%.1f"),
                             "clay_pct": st.column_config.NumberColumn("Clay %", format="%.0f")})
 ui.show_origin("real+modelled+synthetic+assumption", False)
+
+
+@st.cache_data(show_spinner="Avoidable losses from the farm's records...")
+def _avoidable(holding):
+    from engine.cost import avoidable_losses
+    return avoidable_losses(holding)
+
+
+st.subheader("Losses FieldGo could help avoid, per year")
+av = _avoidable(st.session_state["farm"])
+if isinstance(av["year1_eur_mean"], float):
+    k2 = st.columns(3)
+    with k2[0]:
+        ui.metric("Compaction, year 1", ui.fmt_eur(av["year1_eur_mean"]), av["origin"], False,
+                  help="Mean per year: recorded operations done on CAUTION / NO-GO days, worst one per parcel-year")
+        st.caption(f"≈ {ui.fmt_eur(av['year1_eur_mean'] / av['area_ha'])} per ha · years {av['years'][0]}-{av['years'][-1]}")
+    with k2[1]:
+        ui.metric("Subsoil, every year after", ui.fmt_eur(av["subsoil_eur_per_year_mean"]), av["origin"], False,
+                  help="Long-term subsoil part (RECARE 2018) added by each season's wet traffic")
+        st.caption(f"for ~{av['subsoil_years']} years from each season's damage")
+    with k2[2]:
+        d = av["delay_weather_eur_median"]
+        ui.metric("Late sowing, weather part", ui.fmt_eur(d), av["origin"], False,
+                  help="Median-year cost of delay caused by weather (recoverable with planning and a contractor)")
+        st.caption("median year; the late-start part (rotation) is not counted")
+    st.caption("Upper bound, illustrative: " + av["note"])
+else:
+    st.caption("Not available for this farm (no operation records).")
+
 with st.expander("Method and assumptions"):
     st.markdown(f"""
 - **Status** per parcel: soil-water model + thresholds by axle-load class (spec 6.4) for this machine and load.
 - **If you go now** = loss % x trafficked share x area x expected yield x price. Loss % (year 1) by status and class:
   NO-GO L3 5 %, L4 10 %, L5 15 %; CAUTION half of that; L1-L2 not counted. Anchor: Håkansson multi-site study
-  (10-12 t axle load ~15 % year-1 loss; 3-5 % subsoil losses for 12 years); L3/L4 values are interpolated.
-- **Wait one day** = season cost of delay (loss 1 %/day after the optimal sowing date, IUNG) with the day skipped.
+  (10-12 t axle load ~15 % year-1 loss); L3/L4 values are interpolated. Long-term subsoil part: 6 % of yield per year
+  on the trafficked area for ~10 years (RECARE 2018), L5 (L4 half), NO-GO (CAUTION half).
+- **Wait one day** = season cost of delay (barley 0.43 %/day, wheat 1 %/day after the optimal sowing date) with the day skipped.
+- **Avoidable losses** = the farm's recorded operations run through FieldGo's day status (default machine per operation);
+  operations on CAUTION / NO-GO days valued as above, worst one per parcel-year.
 - Yield and price: synthetic farm data (mean 2017-2024; Jul-Aug price). They do not react to weather.
 """)

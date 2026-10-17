@@ -213,3 +213,29 @@ def test_today_carries_the_tyre_check_without_changing_the_status():
     comp = b["compaction"]
     assert comp["assessed"] and comp["wheel_load_t"] == pytest.approx(b["axle_load_t"] / C["wheels_per_axle"].value)
     assert comp["inflation_bar"] == 1.6
+
+
+# ---------------------------------------------------------------- decision 17 Oct: subsoil density, rule as main test
+def test_strength_from_bulk_density_follows_schjonning_lamande_2018():
+    # sqrt(Pc) = -26.51 + 25.57 BD - 20.40 clay + 10.26 clay pF  (clay fraction): BD 1.55, clay 10 %, pF 2 -> ~173 kPa
+    assert cp.strength_from_bd(1.55, 10, 2.0) == pytest.approx((-26.51 + 25.57 * 1.55 - 2.04 + 2.052) ** 2)
+    assert cp.strength_from_bd(1.65, 10, 2.0) > cp.strength_from_bd(1.45, 10, 2.0) > cp.strength_from_bd(1.35, 10, 2.0)
+    assert cp.strength_from_bd(1.55, 20, 5.0) == pytest.approx(cp.strength_from_bd(1.55, 20, 3.08))   # pF clamped
+    assert cp.strength_from_bd(1.0, 10, 2.0) == C["pc_bd_min_kpa"].value                               # floor
+
+
+def test_subsoil_density_changes_only_the_subsoil_strength():
+    a = cp.check(2.5, 1.6, rwc_eff=1.0, tmax_c=10.0, **SOIL)
+    b = cp.check(2.5, 1.6, rwc_eff=1.0, tmax_c=10.0, subsoil_bd=1.65, **SOIL)
+    pa, pb = a["profile"].set_index("depth_m"), b["profile"].set_index("depth_m")
+    assert (pa.loc[pa.layer == "topsoil", "strength_kpa"] == pb.loc[pb.layer == "topsoil", "strength_kpa"]).all()
+    assert (pb.loc[pb.layer == "subsoil", "strength_kpa"] > pa.loc[pa.layer == "subsoil", "strength_kpa"]).all()
+    assert "bulk density" in b["subsoil_strength_source"] and b["subsoil_bd"] == 1.65
+
+
+def test_rule_50kpa_at_50cm_keeps_a_strong_subsoil_at_least_yellow():
+    # dense subsoil: strength says green, but a 4 t wheel at 1.6 bar exceeds 50 kPa at 50 cm on wet soil
+    r = cp.check(4.0, 1.6, rwc_eff=1.0, tmax_c=10.0, subsoil_bd=1.70, **SOIL)
+    assert r["subsoil_sci_class"] == "green" and r["rule_50kpa_50cm"] == "exceeded"
+    assert r["subsoil"] == "yellow" and r["cost_row"] == "CAUTION"
+    assert any("main test" in n for n in r["notes"])

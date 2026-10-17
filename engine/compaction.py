@@ -109,6 +109,16 @@ def strength(clay_pct: float, pf: float, layer: str) -> float:
     return float(10 ** (math.log10(ref) + _c("pc_clay_pf_slope") * clay * (pf - 2.0)))
 
 
+def strength_from_bd(bd_g_cm3: float, clay_pct: float, pf: float) -> float:
+    """Subsoil strength (kPa) from bulk density, clay and pF (Schjønning & Lamandé 2018); pF clamped to the model range."""
+    m = _c("pc_bd_model")
+    lo, hi = _c("pc_bd_pf_range")
+    pf_c = min(max(float(pf), lo), hi)
+    clay = float(clay_pct) / 100.0
+    root = m["a"] + m["b"] * float(bd_g_cm3) + m["c"] * clay + m["d"] * clay * pf_c
+    return float(max(max(root, 0.0) ** 2, _c("pc_bd_min_kpa")))
+
+
 def classify(sci: float) -> str:
     if sci <= 0:
         return "green"
@@ -125,8 +135,12 @@ def _not_assessed(reason: str, **extra) -> dict:
             "origin": ORIGIN, "label": LABEL, "sources": SOURCES} | extra
 
 
-def check(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c=None) -> dict:
-    """Stress vs strength from 0.1 to 0.8 m under one wheel, today's soil wetness."""
+def check(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c=None, subsoil_bd=None) -> dict:
+    """Stress vs strength from 0.1 to 0.8 m under one wheel, today's soil wetness.
+
+    subsoil_bd (g/cm3, optional): subsoil strength from bulk density (Schjønning & Lamandé 2018) instead of the default.
+    The strength-free rule (< 50 kPa at 50 cm) is the main subsoil test: exceeded -> subsoil at least yellow.
+    """
     if _num(tmax_c) and tmax_c <= prm.FROST["tmax_c"].value:
         return _not_assessed("Frozen soil: carries traffic; the stress model does not apply.")
     c = contact(wheel_load_t, inflation_bar)
@@ -141,20 +155,29 @@ def check(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax
     for z in _c("depths_m"):
         layer = "topsoil" if z <= top_max else "subsoil"
         s = vertical_stress(c["mgp_kpa"], c["radius_m"], z, nu)
-        pc = strength(clay_pct, pf, layer)
+        pc = (strength_from_bd(subsoil_bd, clay_pct, pf) if layer == "subsoil" and _num(subsoil_bd)
+              else strength(clay_pct, pf, layer))
         sci = math.log10(s / pc)
         rows.append({"depth_m": z, "layer": layer, "stress_kpa": round(s, 1), "strength_kpa": round(pc, 1),
                      "sci": round(sci, 3), "class": classify(sci)})
     prof = pd.DataFrame(rows, columns=["depth_m", "layer", "stress_kpa", "strength_kpa", "sci", "class"])
     top = _worst(prof.loc[prof.layer == "topsoil", "class"])
-    sub = _worst(prof.loc[prof.layer == "subsoil", "class"])
-    overall = _worst((top, sub))
+    sub_sci = _worst(prof.loc[prof.layer == "subsoil", "class"])
     rule_kpa, rule_z = _c("rule_stress_kpa"), _c("rule_depth_m")
     s50 = vertical_stress(c["mgp_kpa"], c["radius_m"], rule_z, nu)
     d50 = depth_of_stress(c["mgp_kpa"], c["radius_m"], nu, rule_kpa)
+    rule_ok = s50 <= rule_kpa
+    sub = sub_sci if rule_ok else _worst((sub_sci, _c("rule_min_subsoil_class")))
+    overall = _worst((top, sub))
     lo, hi = _c("clay_calibrated_pct")
+    source = (f"bulk density {float(subsoil_bd):.2f} g/cm3 (Schjønning & Lamandé 2018)" if _num(subsoil_bd)
+              else "default (Terranimo note, subsoil density unknown: precautionary)")
     notes = ["Uniform circular footprint: real peak stress under the tyre centre is higher (topsoil = lower bound).",
-             "One soil wetness for the whole profile (as Terranimo light); bulk density not used."]
+             "One soil wetness for the whole profile (as Terranimo light).",
+             f"Subsoil strength: {source}."]
+    if not rule_ok and sub_sci == "green":
+        notes.append("Strength estimate says green, but 50 kPa at 50 cm is exceeded: subsoil shown as yellow "
+                     "(the strength-free rule is the main test).")
     if not (lo <= float(clay_pct) <= hi):
         notes.append(f"Clay {float(clay_pct):.0f}% is outside the calibrated clay range {lo:.0f}-{hi:.0f}%: strength "
                      f"uses {min(max(float(clay_pct), lo), hi):.0f}% (indicative only).")
@@ -162,17 +185,18 @@ def check(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax
             "mgp_kpa": round(c["mgp_kpa"], 1), "area_m2": round(c["area_m2"], 3), "pf": round(pf, 2),
             "nu": round(nu, 2), "profile": prof, "topsoil": top, "subsoil": sub, "overall": overall,
             "stress_50cm_kpa": round(s50, 1), "depth_50kpa_m": round(d50, 2),
-            "rule_50kpa_50cm": "met" if s50 <= rule_kpa else "exceeded",
+            "rule_50kpa_50cm": "met" if rule_ok else "exceeded", "subsoil_sci_class": sub_sci,
+            "subsoil_strength_source": source, "subsoil_bd": float(subsoil_bd) if _num(subsoil_bd) else None,
             "cost_row": _c("class_to_cost_row")[sub], "notes": notes, "origin": ORIGIN, "label": LABEL,
             "sources": SOURCES}
 
 
 # --------------------------------------------------------------------------- what would help
 def max_wheel_load_t(inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, layer: str = "subsoil",
-                     cap_t: float = 20.0) -> float:
+                     cap_t: float = 20.0, subsoil_bd=None) -> float:
     """Largest wheel load (t, 0.01 t steps) that keeps every depth of `layer` green at this pressure and wetness."""
     def ok(load):
-        r = check(load, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff)
+        r = check(load, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, subsoil_bd=subsoil_bd)
         return r["assessed"] and r[layer] == "green"
     if not ok(0.05):
         return 0.0
@@ -185,9 +209,9 @@ def max_wheel_load_t(inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, layer: 
     return math.floor(lo * 100) / 100
 
 
-def levers(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c=None) -> list[dict]:
+def levers(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c=None, subsoil_bd=None) -> list[dict]:
     """Terranimo's advice in numbers: lower tyre pressure (mostly topsoil), lighter wheel load (mostly subsoil)."""
-    base = check(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c)
+    base = check(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c, subsoil_bd=subsoil_bd)
     if not base["assessed"] or base["overall"] == "green":
         return []
     out = []
@@ -196,7 +220,7 @@ def levers(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tma
         cands = []
         p = round(float(inflation_bar) - step, 2)
         while p >= pmin - 1e-9:
-            r = check(wheel_load_t, p, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c)
+            r = check(wheel_load_t, p, clay_pct, sand_pct, om_pct, rwc_eff, tmax_c, subsoil_bd=subsoil_bd)
             cands.append(((CLASS_RANK[r["subsoil"]], CLASS_RANK[r["topsoil"]]), -p, r))   # subsoil first
             p = round(p - step, 2)
         if cands:
@@ -208,7 +232,7 @@ def levers(wheel_load_t, inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, tma
                         "note": "Only if your tyre's load/pressure table allows this pressure at this load and speed "
                                 "(central tyre inflation makes it practical)."})
     if base["subsoil"] != "green":
-        m = max_wheel_load_t(inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff)
+        m = max_wheel_load_t(inflation_bar, clay_pct, sand_pct, om_pct, rwc_eff, subsoil_bd=subsoil_bd)
         if m < wheel_load_t:
             out.append({"lever": "lighter wheel load", "wheel_load_t": m,
                         "axle_load_t": round(m * _c("wheels_per_axle"), 2), "inflation_bar": float(inflation_bar),

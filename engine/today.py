@@ -96,7 +96,7 @@ def assess(soil_water: pd.DataFrame, weather: pd.DataFrame, parcel: pd.Series, d
     """Pure Today assessment from the parcel's soil-water table and the regional weather.
 
     custom_machine: {"name": str, "axle_t": max axle load in t at the current load} (spec 6.1 custom form).
-    tyre: {"inflation_bar": float} -> adds a tyre-based compaction check (engine.compaction); the status is unchanged.
+    tyre: {"inflation_bar": float, "subsoil_bd": g/cm3 optional} -> adds a tyre-based compaction check (engine.compaction); the status is unchanged.
     """
     classify_day, axle_load_class, source = _status_fns()
     d = pd.Timestamp(date)
@@ -165,7 +165,8 @@ def _tyre_check(tyre, axle, parcel, sw, wx, strip) -> dict:
     from engine import compaction
     wheel = float(axle) / prm.COMPACTION["wheels_per_axle"].value
     bar = float(tyre["inflation_bar"])
-    soil = dict(clay_pct=parcel.get("clay_pct"), sand_pct=parcel.get("sand_pct"), om_pct=parcel.get("om_pct"))
+    soil = dict(clay_pct=parcel.get("clay_pct"), sand_pct=parcel.get("sand_pct"), om_pct=parcel.get("om_pct"),
+                subsoil_bd=tyre.get("subsoil_bd") or None)
 
     def at(dd):
         if dd not in sw.index or dd not in wx.index:

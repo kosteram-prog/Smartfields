@@ -16,8 +16,8 @@ def test_every_contract_function_has_a_stub(name):
 
 
 def test_season_demo_numbers():
-    assert stubs.season({})["P_by_deadline"]["value"] == pytest.approx(0.6)
-    assert stubs.season({"contractor_ha_day": 5})["P_by_deadline"]["value"] == pytest.approx(0.9)
+    assert stubs.season({})["P_by_deadline"]["value"] == pytest.approx(0.8)   # engine 17 Oct (FC -10 kPa)
+    assert stubs.season({"contractor_ha_day": 5})["P_by_deadline"]["value"] == pytest.approx(1.0)
 
 
 def test_today_demo_cases_13_oct_2016():
@@ -25,7 +25,7 @@ def test_today_demo_cases_13_oct_2016():
     assert stubs.today("PARCEL-0149869", d, "M3", 100)["status"] == "NO-GO"
     assert stubs.today("PARCEL-0149869", d, "M2", 100)["status"] == "CAUTION"
     assert stubs.today("PARCEL-0149906", d, "M2", 100)["status"] == "GO"
-    assert stubs.wait_cost(d)["eur"] == 1700.0
+    assert stubs.wait_cost(d)["eur"] == 790.0
 
 
 def test_missing_value_is_not_available_never_zero():
@@ -40,7 +40,7 @@ def test_lint_cards_2024():
 
 def test_cost_demo_numbers():
     c = stubs.season_cost()
-    assert c["median"]["weather_default"] == 2600 and c["worst_year"]["weather_default"] == 10700
+    assert c["median"]["weather_default"] == 1600 and c["worst_year"]["weather_default"] == 6600
 
 
 def test_outputs_carry_origin():
