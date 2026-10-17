@@ -37,3 +37,18 @@ def test_figure_builds_with_statuses():
     farm = pd.DataFrame({"parcel_id": ids, "crop": "BARL", "area_ha": 6.0, "status": "GO"})
     fig = farm_map.figure(farm)
     assert sum(1 for t in fig.data if t.fill == "toself") >= 30
+
+
+def test_plot_zones_cover_every_plot_and_are_ordered():
+    """Within-plot zones (tools/make_plot_zones.py): wettest third has the biggest radar rise, lower NDVI zone is lowest."""
+    import numpy as np
+    meta = json.loads((LAYOUT.parent / "plot_zones.json").read_text())
+    grids = np.load(LAYOUT.parent / "plot_zones.npz")
+    ids = {f["parcel_id"] for f in json.loads(LAYOUT.read_text())["fields"]}
+    assert set(meta["plots"]) == ids
+    for pid, s in meta["plots"].items():
+        w = grids[pid + "|wet"]
+        assert set(np.unique(w)) <= {-1, 0, 1, 2} and (w >= 0).sum() > 20
+        assert s["wet_zone_change_db"][0] > s["wet_zone_change_db"][1] > s["wet_zone_change_db"][2]
+        if s.get("ndvi_zone_rel"):
+            assert s["ndvi_zone_rel"][0] < s["ndvi_zone_rel"][1] < s["ndvi_zone_rel"][2]

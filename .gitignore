@@ -23,3 +23,4 @@ venv/
 config.local.js
 .env.local
 dg-agri-hackathon-datasets/
+.cache/
