@@ -17,7 +17,7 @@ from engine import params as prm
 
 NA = "not available"
 RANK = {"GO": 0, "CAUTION": 1, "NO-GO": 2}
-BEST_NEXT_CHECK = ("Ball/ribbon hand test (AHDB) on the wettest part of the field: if the soil moulds into a ball "
+BEST_NEXT_CHECK = ("Ball/ribbon hand test (AHDB) on the wettest part of the plot: if the soil moulds into a ball "
                    "or ribbon, it is plastic, so wait. Option: a soil-moisture reading at 20 cm.")
 
 
@@ -61,7 +61,7 @@ def confidence(load_pct, passes, observation, custom_machine: bool = False) -> t
     c = prm.CONFIDENCE
     score = c["start"].value + c["weather_regional"].value + c["soil_synthetic"].value + c["replay_not_forecast"].value
     based_on = ["AgERA5 weather, regional average (replay of history, not a forecast)",
-                "Parcel soil texture (synthetic) -> Saxton-Rawls soil-water model, 0-30 cm"]
+                "Plot soil texture (synthetic) -> Saxton-Rawls soil-water model, 0-30 cm"]
     missing = ["Field-level weather", "Measured soil moisture"]
     if custom_machine:
         based_on.append("Your machine data")
@@ -207,6 +207,6 @@ def today(parcel_id: str, date, machine_id: str = "M2", load_pct=100, passes=1, 
     farm, wx, sw = _farm_inputs(str(config.get_data_dir()), holding_id, prm.DEMO["nuts3"].value)
     hit = farm[farm.parcel_id == parcel_id]
     if hit.empty:
-        raise ValueError(f"Parcel {parcel_id} is not on holding {holding_id}")
+        raise ValueError(f"Plot {parcel_id} is not on holding {holding_id}")
     return assess(sw[sw.parcel_id == parcel_id], wx, hit.iloc[0], date, machine_id, load_pct, passes, operation,
                   observation=observation, custom_machine=custom_machine, tyre=tyre)

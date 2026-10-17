@@ -12,13 +12,13 @@ import pandas as pd
 from engine import params as prm
 
 
-SOIL_LEVELS = (("measured", "measured on the field"), ("soilgrids_point", "SoilGrids 250 m at the field point"))
+SOIL_LEVELS = (("measured", "measured on the plot"), ("soilgrids_point", "SoilGrids 250 m at the plot point"))
 
 
 def field_soil(measured: dict | None = None) -> dict:
     """Best available texture for the real field: user input > params measured > SoilGrids point > regional mean."""
     from engine import data
-    candidates = [("measured on the field (your input)", measured, "real")]
+    candidates = [("measured on the plot (your input)", measured, "real")]
     candidates += [(label, prm.REAL_FIELD_SOIL[key].value, prm.REAL_FIELD_SOIL[key].origin) for key, label in SOIL_LEVELS]
     for label, tex, origin in candidates:
         if tex and all(tex.get(k) is not None for k in ("clay_pct", "sand_pct", "om_pct")):

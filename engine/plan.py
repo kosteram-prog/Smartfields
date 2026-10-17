@@ -147,7 +147,7 @@ def safer_plan(parcel_id: str, date, machine_id: str = "M2", load_pct: float = 1
         eur = _cost_diff(d.year, farm, p, p, skip_dates=skipped) if operation == "sowing" else NA
         plans.append({"lever": "other day", "parcel_id": parcel_id, "date": dd, "load_pct": load_pct,
                       "machine_id": machine_id, "status": t["status"],
-                      "reason": f"{dd:%d %b}: {t['status']} for the same parcel and load",
+                      "reason": f"{dd:%d %b}: {t['status']} for the same plot and load",
                       "cost": {"eur": eur, "note": f"waiting {len(skipped)} day(s), whole farm, replay year",
                                "origin": ORIGIN}})
 

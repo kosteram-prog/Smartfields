@@ -1,6 +1,6 @@
 """Farm map: real orthophoto (Geoportal, GUGiK) with field outlines traced from it, coloured by the engine's status.
 
-The organisers' parcel shapes are placeholders, so the map shows 30 of the farm's parcels on fields traced from a real
+The organisers' parcel shapes are placeholders, so the map shows 30 of the farm's plots on outlines traced from a real
 orthophoto of Wielkopolska (tools/make_farm_layout.py). The location is illustrative; every colour and hover value
 (crop, real area, soil, status) comes from the data and the engine.
 """
@@ -49,7 +49,7 @@ def figure(farm, height=620, labels=None, title=None) -> go.Figure | None:
         r = info.loc[f["parcel_id"]]
         status = r.get("status", "not available")
         num = f["parcel_id"][-3:]
-        hover = (labels or {}).get(f["parcel_id"], f"Field {num} · {CROP_SHORT.get(r.crop, r.crop)} · {r.area_ha:.1f} ha")
+        hover = (labels or {}).get(f["parcel_id"], f"Plot {num} · {CROP_SHORT.get(r.crop, r.crop)} · {r.area_ha:.1f} ha")
         fig.add_trace(go.Scatter(x=f["xs"], y=f["ys"], fill="toself", mode="lines",
                                  fillcolor=FILL.get(status, FILL["not available"]),
                                  line=dict(color=COLORS.get(status, COLORS["not available"]), width=2.5),

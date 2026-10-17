@@ -26,7 +26,7 @@ def render(parcel_id, date, machine_id, load_pct, passes, operation="sowing") ->
     cols = st.columns(len(plans))
     for col, p in zip(cols, plans):
         with col, st.container(border=True):
-            st.markdown(("⭐ **Recommended** · " if p.get("recommended") else "") + f"**{p['lever'].capitalize()}**")
+            st.markdown(("⭐ **Recommended** · " if p.get("recommended") else "") + f"**{p['lever'].replace('parcel', 'plot').capitalize()}**")
             ui.status_tile(f"{p.get('machine_id', '')} · {ui.field_name(p['parcel_id'])} · {pd.Timestamp(p['date']):%d %b} · "
                            f"{p['load_pct']}% load", p["status"],
                            size="1.4rem")

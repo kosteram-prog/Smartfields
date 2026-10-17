@@ -32,7 +32,7 @@ def _warm_up() -> bool:
 if REAL:
     _warm_up()
 ui.sidebar(real=REAL)
-P = "pages/"
+P = "views/"
 nav = st.navigation({
     "": [st.Page(P + "0_Home.py", title="Home", icon="🏠", default=True)],
     "Decide": [st.Page(P + "3_Today.py", title="Today", icon="🚜"),
@@ -41,7 +41,7 @@ nav = st.navigation({
              st.Page(P + "4_Records.py", title="Records", icon="📝"),
              st.Page(P + "6_Loss.py", title="Loss calculator", icon="💶")],
     "Data": [st.Page(P + "5_About.py", title="About the data", icon="ℹ️"),
-             st.Page(P + "7_Satellite.py", title="Field zones", icon="🛰️"),
-             st.Page(P + "8_Connect.py", title="Connect", icon="🔌")],
+             st.Page(P + "7_Satellite.py", title="Plot zones", icon="🛰️"),
+             st.Page(P + "8_Connect.py", title="Integrations", icon="🔌")],
 })
 nav.run()

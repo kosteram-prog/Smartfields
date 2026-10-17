@@ -22,20 +22,20 @@ FLAG_COLS = ["rule", "record_type", "record_id", "parcel_id", "year", "date", "d
 
 CARDS = {
     "R5": dict(severity="issue", title="Fertiliser rows repeat the same rate",
-               why="Every row of these parcel-years has identical N and P: either a copy error or an annual rate "
-                   "written once per application. Totals per field are doubtful.",
+               why="Every row of these plot-years has identical N and P: either a copy error or an annual rate "
+                   "written once per application. Totals per plot are doubtful.",
                fix="Record the rate of each application (kg/ha per pass), or one row with the annual total."),
-    "R4": dict(severity="issue", title="Fertigation on parcels that were not irrigated",
-               why="Fertigation needs irrigation water; the irrigation record says the parcel was not irrigated.",
+    "R4": dict(severity="issue", title="Fertigation on plots that were not irrigated",
+               why="Fertigation needs irrigation water; the irrigation record says the plot was not irrigated.",
                fix="Correct the method (e.g. broadcast) or add the missing irrigation record."),
     "R3": dict(severity="issue", title="Nitrogen in the closed period or on frozen soil",
                why="Nitrate rules forbid N in the winter closed period (default 1 Dec - 31 Jan, verify per country) "
                    "and on frozen soil; inspectors check this first.",
                fix="Check the date. If it is right, the application breaches the nitrate action programme."),
     "R1": dict(severity="issue", title="Sprays dated outside the crop's season",
-               why="A spray before sowing or after harvest cannot be on this crop: wrong date, wrong parcel or "
+               why="A spray before sowing or after harvest cannot be on this crop: wrong date, wrong plot or "
                    "wrong campaign.",
-               fix="Check the date and the parcel of each spray."),
+               fix="Check the date and the plot of each spray."),
     "R2-fert": dict(severity="issue", title="Mineral fertiliser on an organic holding",
                     why="Organic certification does not allow mineral (synthetic) fertiliser.",
                     fix="Check the organic status of the holding or the product type of these rows."),
@@ -44,7 +44,7 @@ CARDS = {
                     fix="Check the organic status of the holding or the product of these rows."),
     "R6": dict(severity="check", title="Sprays on a rainy or windy day (check)",
                why="Heavy rain washes the product off; strong wind causes drift. Regional weather, so only a check.",
-               fix="Confirm the conditions on the field that day; note them in the record."),
+               fix="Confirm the conditions on the plot that day; note them in the record."),
 }
 
 
@@ -105,7 +105,7 @@ def lint(tables: dict, weather: pd.DataFrame, holding: dict, campaign: int | Non
     fg = fert[fert.method == "FERTIGATION"].merge(tables["irrigation"][["parcel_id", "year", "irrigated"]],
                                                   on=["parcel_id", "year"], how="left")
     out.append(_flags(fg[fg.irrigated.fillna(0) == 0], "R4", "fertilisation", "fertilisation_id", "app_date",
-                      lambda r: f"fertigation on {r.app_date:%d %b %Y}, parcel not irrigated in {r.year}"))
+                      lambda r: f"fertigation on {r.app_date:%d %b %Y}, plot not irrigated in {r.year}"))
 
     # R5: identical N/P in all rows of a multi-row parcel-year
     g = fert.groupby(["parcel_id", "year"])

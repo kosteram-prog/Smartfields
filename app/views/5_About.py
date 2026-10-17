@@ -14,12 +14,12 @@ st.subheader("Data and origin labels")
 st.table(pd.DataFrame([
     {"origin": "real", "data": "AgERA5 daily weather 2015-2024 (Copernicus C3S), regional NUTS3 average", "use": "Soil water, statuses, Season scenarios, N check, record conditions"},
     {"origin": "modelled", "data": "Our engine: Saxton-Rawls soil hydraulics, 0-30 cm soil-water bucket, statuses, season simulation", "use": "Every status and probability"},
-    {"origin": "synthetic", "data": "Organisers' farm FARM-13525: parcels, parcel soil, operations, yields, prices", "use": "Farm, records, expected yield and price"},
+    {"origin": "synthetic", "data": "Organisers' farm FARM-13525: plots, plot soil, operations, yields, prices", "use": "Farm, records, expected yield and price"},
     {"origin": "assumption", "data": "Parameter tables below (editable), each with its source", "use": "Thresholds, machines, loss rates"},
-    {"origin": "real (satellite)", "data": "Sentinel-1 radar over a real 80.7 ha field near Poznań (Oct 2016), pre-rendered", "use": "Field zones panel"},
+    {"origin": "real (satellite)", "data": "Sentinel-1 radar over a real 80.7 ha plot near Poznań (Oct 2016), pre-rendered", "use": "Plot zones panel"},
 ]))
 
-st.subheader("Assumption tables (prototype values, reviewed by the team's agronomists)")
+st.subheader("Assumption tables (prototype values with sources, to calibrate in pilots)")
 tabs = st.tabs(["Machines 6.1", "Thresholds 6.4", "Cost of delay 6.8", "Wet traffic 6.8.3", "N check 6.7", "Confidence 7.9",
                 "Compaction with tyres"])
 with tabs[0]:
@@ -54,7 +54,7 @@ with tabs[3]:
     st.dataframe(pd.DataFrame([{"class": k, "NO-GO year-1 loss %": w["NO-GO"][k].value,
                                 "CAUTION year-1 loss %": w["CAUTION"][k].value} for k in w["NO-GO"]]), hide_index=True)
     pers = w["persistent"]
-    st.caption(f"Applied to {w['trafficked_share'].value:.0%} of the parcel (trafficked share, editable). Anchor: "
+    st.caption(f"Applied to {w['trafficked_share'].value:.0%} of the plot (trafficked share, editable). Anchor: "
                "Håkansson multi-site study (10-12 t axle ~15 % year-1 loss). L3/L4 and the CAUTION factor are "
                "interpolated: illustrative, needs calibration.")
     st.caption(f"Long-term subsoil part (shown separately): {pers['pct_per_year'].value} % of yield per year for "
@@ -98,8 +98,8 @@ if config.data_dir_or_none() is not None:
     def _radar(measured):
         return validate.radar_vs_model(measured=dict(measured) if measured else None)
 
-    with st.expander("Soil of this field: use a soil analysis if you have one (best source first)"):
-        st.caption("Order: your soil analysis > SoilGrids 250 m at the field point > regional SoilGrids mean (NUTS3).")
+    with st.expander("Soil of this plot: use a soil analysis if you have one (best source first)"):
+        st.caption("Order: your soil analysis > SoilGrids 250 m at the plot point > regional SoilGrids mean (NUTS3).")
         use = st.checkbox("Use my soil analysis for Gasawy 28", key="use_field_soil")
         c = st.columns(3)
         sand = c[0].number_input("Sand %", 0.0, 100.0, 60.0, 1.0, key="fs_sand")
@@ -108,9 +108,9 @@ if config.data_dir_or_none() is not None:
     measured = (("clay_pct", clay), ("sand_pct", sand), ("om_pct", om)) if use else None
     r = _radar(measured)
     f = r["field"]
-    st.caption(f"Real field {f['name']}, {f['area_ha']} ha near Poznań. Soil: clay {f['clay_pct']}%, sand {f['sand_pct']}%, "
+    st.caption(f"Real plot {f['name']}, {f['area_ha']} ha near Poznań. Soil: clay {f['clay_pct']}%, sand {f['sand_pct']}%, "
                f"OM {f['om_pct']}% from **{f['soil_source']}**. Weather AgERA5 {f['nuts3']}; the same soil-water model as "
-               "the demo farm, compared with the field-mean Sentinel-1 radar backscatter (VV).")
+               "the demo farm, compared with the plot-mean Sentinel-1 radar backscatter (VV).")
     d, m = r["daily"], r["radar"]
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.25, 0.4, 0.35],
                         subplot_titles=("Rain (mm/day, AgERA5)", "Model: topsoil wetness RWC_eff (1 = field capacity)",
@@ -137,7 +137,7 @@ if config.data_dir_or_none() is not None:
                 "the model dries the sandy topsoil faster than the radar suggests.\n"
                 "- Radar also responds to roughness and residue, so this is *consistent with the model*, not proof.\n"
                 "- The agreement hardly depends on the soil (the rain sets the order of the dates); the GO / CAUTION / "
-                "NO-GO statuses do. That is why a field soil analysis matters for the decision.")
+                "NO-GO statuses do. That is why a plot soil analysis matters for the decision.")
     ui.show_origin(r["origin"], False)
 
     st.subheader("How robust are the numbers? (one assumption changed at a time)")
@@ -154,8 +154,8 @@ if config.data_dir_or_none() is not None:
                                     "demo_13oct": "13 Oct: clay L2/L3 · sand L2/L3"})
         st.dataframe(t, hide_index=True, width="stretch", column_config={
             "P(finish by 15 Oct)": st.column_config.NumberColumn(format="percent"),
-            "weather cost, median": st.column_config.NumberColumn(format="EUR %.0f"),
-            "weather cost, 2016": st.column_config.NumberColumn(format="EUR %.0f")})
+            "weather cost, median": st.column_config.NumberColumn(format="EUR %,.0f"),
+            "weather cost, 2016": st.column_config.NumberColumn(format="EUR %,.0f")})
         st.markdown("**Robust:** P stays 60-100 %, the median-year cost stays a few thousand euro and a contractor "
                     "helps in every variant. **Not robust:** the cost of a wet autumn like 2016 moves several-fold "
                     "with the thresholds and the CAUTION rule, so we always show it as a range. G/C/N = GO/CAUTION/NO-GO.")
@@ -169,7 +169,7 @@ st.info("We used AI coding assistants to build the prototype. All decisions in F
 st.subheader("Limitations")
 st.markdown("""
 - Weather is a **regional** daily average (NUTS3), not field-level; replay mode uses history as the forecast.
-- Parcel soil and all farm records are **synthetic**; synthetic yields and prices do not react to weather.
+- Plot soil and all farm records are **synthetic**; synthetic yields and prices do not react to weather.
 - Thresholds, machine profiles and loss rates are **prototype assumptions** from published sources, not calibrated
   field rules; the 2016 cost of delay changes several-fold across reasonable assumptions, so it is always a range.
 - The soil-water model is a simple 0-30 cm bucket; it cannot see subsoil wetness or bearing capacity.

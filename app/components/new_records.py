@@ -11,7 +11,7 @@ def render() -> None:
             st.caption("On the Today page, press **Mark as done** after the work: FieldGo saves the operation together "
                        "with the day's soil status, weather and machine, ready for your farm records.")
             try:
-                st.page_link("pages/3_Today.py", label="Go to Today", icon="🚜")
+                st.page_link("views/3_Today.py", label="Go to Today", icon="🚜")
             except Exception:  # noqa: BLE001  (page run on its own, without the router)
                 pass
         return
@@ -19,7 +19,7 @@ def render() -> None:
     df = pd.DataFrame(recs)
     if "parcel_id" in df:
         import ui
-        df.insert(0, "field", df["parcel_id"].map(ui.field_name))
+        df.insert(0, "plot", df["parcel_id"].map(ui.field_name))
     for col in df.columns:
         if df[col].map(lambda v: isinstance(v, (list, dict))).any():
             df[col] = df[col].map(lambda v: ", ".join(v) if isinstance(v, list) else str(v))

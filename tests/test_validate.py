@@ -19,6 +19,6 @@ def test_soil_source_order_measured_before_regional():
     reg = validate.field_soil()
     assert reg["level"] == "regional" and reg["sand_pct"] > 70
     mine = validate.field_soil({"clay_pct": 18.0, "sand_pct": 45.0, "om_pct": 2.0})
-    assert mine["level"] == "measured on the field" and mine["clay_pct"] == 18.0
+    assert mine["level"] == "measured on the plot" and mine["clay_pct"] == 18.0
     r = validate.radar_vs_model(measured={"clay_pct": 18.0, "sand_pct": 45.0, "om_pct": 2.0})
-    assert r["field"]["soil_level"] == "measured on the field" and r["field"]["fc_mm"] > 54.8   # loamier -> more water
+    assert r["field"]["soil_level"] == "measured on the plot" and r["field"]["fc_mm"] > 54.8   # loamier -> more water

@@ -37,7 +37,7 @@ def assess(parcel, date, machine, load, passes, operation, observation, custom, 
 farm = parcels(st.session_state["farm"])
 label = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
 c = st.columns([3, 1.4, 2.4, 1.6, 1])
-parcel = ui.pick(c[0], "selectbox", "Parcel", "parcel", list(farm.parcel_id), format_func=label.get)
+parcel = ui.pick(c[0], "selectbox", "Plot", "parcel", list(farm.parcel_id), format_func=label.get)
 operation = ui.pick(c[1], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
 machine = ui.pick(c[2], "selectbox", "Machine", "machine", list(prm.MACHINES),
                          format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
@@ -79,7 +79,7 @@ with c_status:
     ui.status_tile(f"{ui.field_name(parcel)} · {when:%d %b %Y}", t["status"], size="3rem")
     a, s = st.columns(2)
     with a:
-        ui.status_tile("Field access", t["access"], size="0.95rem")
+        ui.status_tile("Plot access", t["access"], size="0.95rem")
     with s:
         ui.status_tile("Operation", t["suitability"], size="0.95rem")
     prof = custom["name"] if custom else prm.MACHINES[machine]["profile"]
@@ -175,6 +175,6 @@ if REAL and t["status"] in ("GO", "CAUTION", "NO-GO"):
             st.caption("Optional: set ANTHROPIC_API_KEY to let an AI rewrite this text. It receives only these values "
                        "and cannot change them or the decision (checked in code).")
 try:
-    st.page_link("pages/7_Satellite.py", label="Field zones: where to be careful inside a field", icon="🛰️")
+    st.page_link("views/7_Satellite.py", label="Plot zones: where to be careful inside a plot", icon="🛰️")
 except Exception:  # noqa: BLE001  (page run on its own, without the router)
     pass

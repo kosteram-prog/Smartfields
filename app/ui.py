@@ -112,7 +112,7 @@ CROP_WORDS = {"BARL": "barley", "COWT": "wheat", "RAPE": "rapeseed", "MAIZ": "ma
 
 def field_name(parcel_id: str) -> str:
     """Short field name from a parcel id: PARCEL-0149869 -> 'Field 869' (unique on the demo farm)."""
-    return f"Field {str(parcel_id)[-3:]}"
+    return f"Plot {str(parcel_id)[-3:]}"
 
 
 def soil_word(clay_pct, sand_pct) -> str:
@@ -137,7 +137,7 @@ def parcel_label(pid, crop, area_ha, clay_pct, sand_pct) -> str:
 def humanize(text: str) -> str:
     """Replace parcel ids in engine text by field names."""
     import re
-    return re.sub(r"PARCEL-\d*?(\d{3})\b", lambda m: f"Field {m.group(1)}", str(text))
+    return re.sub(r"PARCEL-\d*?(\d{3})\b", lambda m: f"Plot {m.group(1)}", str(text))
 
 
 def wetness_words(rwc_eff) -> str:

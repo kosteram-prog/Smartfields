@@ -63,13 +63,17 @@ average, not field-level).
 - Weather is a regional average; soil is synthetic per parcel; the soil-water model is a simple 0-30 cm bucket.
 - Synthetic yields and prices do not react to weather, so euro values are illustrative and always shown as a range.
 
-## Extra pages (Mirela — FieldGo integrations)
+## Pages
+
+`app/main.py` is the router (sections Decide / Farm / Data, shared sidebar); the pages live in `app/views/`.
+
+### Extra pages (Mirela — FieldGo integrations)
 
 Added on top of Marek's kickoff skeleton (do not replace his pages):
 
-- **Loss calculator** (`app/pages/6_Loss.py`) — go now on wet soil vs wait a day, per parcel, from the engine (`entry_cost`, `wait_cost`).
-- **Satellite** (`app/pages/7_Satellite.py`) — Copernicus / Sentinel map; optional `COPERNICUS_ACCESS_TOKEN`, public EOX fallback tiles.
-- **Connect** (`app/pages/8_Connect.py`) — John Deere, CLAAS, Climate FieldView, weather stations as API connection points (no live OAuth).
+- **Loss calculator** (`app/views/6_Loss.py`) — go now on wet soil vs wait a day, per plot, from the engine (`entry_cost`, `wait_cost`).
+- **Plot zones** (`app/views/7_Satellite.py`) — Sentinel-1 wetness and Sentinel-2 NDVI zones of a real plot, plus the Sentinel view of the region.
+- **Integrations** (`app/views/8_Connect.py`) — data sources in use, and planned integrations (John Deere, CLAAS, Climate FieldView, weather stations; roadmap, nothing connected).
 
 Parameters were **appended** only (`LOSS_CALC`, `SATELLITE`, `INTEGRATIONS`). Existing `COST` / `WET_TRAFFIC_LOSS` values were not changed.
 

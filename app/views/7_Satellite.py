@@ -11,8 +11,8 @@ from components import zones_panel
 from engine import params as prm
 from engine import stubs
 
-ui.shell("Field zones")
-st.caption("Inside one field the soil is not the same: where it stays wet after rain, and where the crop grows "
+ui.shell("Plot zones")
+st.caption("Inside one plot the soil is not the same: where it stays wet after rain, and where the crop grows "
            "better or worse. Both layers come from free Copernicus satellites.")
 zones_panel.render(inline=True)
 st.markdown("#### Satellite view of the region")

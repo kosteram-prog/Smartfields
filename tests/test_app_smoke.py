@@ -7,7 +7,7 @@ from streamlit.testing.v1 import AppTest
 
 APP = Path(__file__).resolve().parents[1] / "app"
 sys.path.insert(0, str(APP))   # pages import `ui` and `components` from the app folder
-PAGES = ["main.py"] + [f"pages/{p.name}" for p in sorted((APP / "pages").glob("*.py"))]
+PAGES = ["main.py"] + [f"views/{p.name}" for p in sorted((APP / "views").glob("*.py"))]
 
 
 @pytest.mark.parametrize("page", PAGES)
@@ -17,7 +17,7 @@ def test_page_runs(page):
     assert any("Replay mode" in i.value for i in at.info)
 
 
-ROUTED = ["pages/3_Today.py", "pages/6_Loss.py", "pages/1_Farm.py", "pages/2_Season.py"]
+ROUTED = ["views/3_Today.py", "views/6_Loss.py", "views/1_Farm.py", "views/2_Season.py"]
 
 
 @pytest.mark.needs_data
@@ -25,7 +25,7 @@ def test_router_shares_machine_across_pages():
     """B3/B4: the router renders sections; a machine chosen on Today is the machine on Loss and Farm."""
     at = AppTest.from_file(str(APP / "main.py"), default_timeout=60).run()
     assert not at.exception, at.exception
-    at.switch_page("pages/3_Today.py").run()
+    at.switch_page("views/3_Today.py").run()
     assert not at.exception, at.exception
     sel = next(s for s in at.selectbox if s.label == "Machine")
     sel.set_value("M4").run()

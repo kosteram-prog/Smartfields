@@ -37,14 +37,14 @@ def render(holding_id: str, campaign=2024) -> None:
     if flags is not None and len(flags):
         out = flags.copy()
         if "parcel_id" in out:
-            out.insert(0, "field", out["parcel_id"].map(ui.field_name))
+            out.insert(0, "plot", out["parcel_id"].map(ui.field_name))
         st.download_button("Download all flags (CSV, for your agronomist or the inspector)", out.to_csv(index=False),
                            f"fieldgo_record_check_{campaign or 'all'}.csv", "text/csv")
     for c in issues + checks:
         icon = "🔴" if c.get("severity", "issue") == "issue" else "🟡"
         with st.container(border=True):
             st.markdown(f"{icon} **{c['title']}** · {c['n_rows']} rows"
-                        + (f" on {c['n_parcels']} parcels" if "n_parcels" in c else "") + f" · rule {c['rule']}")
+                        + (f" on {c['n_parcels']} plots" if "n_parcels" in c else "") + f" · rule {c['rule']}")
             st.write(c["why"])
             st.markdown(f"**Suggested fix:** {c['fix']}")
             with st.expander(f"Show the {c['n_rows']} rows"):

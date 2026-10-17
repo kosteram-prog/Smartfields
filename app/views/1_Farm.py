@@ -22,7 +22,7 @@ else:
     def _farm(h):
         return data.farm_summary(h), data.load_farm(h)
 
-    @st.cache_data(show_spinner="Computing today's status for every parcel...")
+    @st.cache_data(show_spinner="Computing today's status for every plot...")
     def _status(h, date, machine):
         f = data.load_farm(h)
         sw = soil.soil_water(f, data.load_weather(f.nuts3.iloc[0]))
@@ -36,7 +36,7 @@ else:
 c = st.columns(5)
 crops = fs.get("crops") or {}
 barl, cowt = crops.get("BARL", fs.get("barley", {})), crops.get("COWT", fs.get("wheat", {}))
-for col, (label, val) in zip(c, [("Parcels", fs["parcels"]), ("UAA (ha)", fs["uaa_ha"]),
+for col, (label, val) in zip(c, [("Plots", fs["parcels"]), ("UAA (ha)", fs["uaa_ha"]),
                                   ("Winter cereals (ha)", fs["winter_cereals_ha"]),
                                   ("Barley", f"{barl.get('parcels', '-')} / {barl.get('ha', '-')} ha"),
                                   ("Wheat", f"{cowt.get('parcels', '-')} / {cowt.get('ha', '-')} ha")]):
@@ -63,8 +63,8 @@ if REAL:
     if fig is not None:
         st.markdown("#### Farm map: who can go where today")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-        st.caption("30 of the farm's parcels drawn on fields traced from a real orthophoto of rural Wielkopolska "
-                   "(GUGiK, geoportal.gov.pl, open data). The location is illustrative: the organisers' parcel shapes "
+        st.caption("30 of the farm's plots drawn on outlines traced from a real orthophoto of rural Wielkopolska "
+                   "(GUGiK, geoportal.gov.pl, open data). The location is illustrative: the organisers' plot shapes "
                    "are placeholders. Crop, real area, soil and status on hover come from the data and the engine. "
                    "In production: the farmer's own IACS field boundaries.")
 
@@ -72,7 +72,7 @@ if REAL:
 if REAL:
     from engine import season
     st.markdown("#### Today's plan")
-    op = st.radio("Operation", ["sowing (winter cereals)", "all fields"], horizontal=True, key="farm_plan_op")
+    op = st.radio("Operation", ["sowing (winter cereals)", "all plots"], horizontal=True, key="farm_plan_op")
     pool = farm[farm.crop.isin(season.autumn_crops())] if op.startswith("sowing") else farm
     pr = season.priority(pool)[["parcel_id", "priority", "rank"]] if op.startswith("sowing") else \
         pool[["parcel_id"]].assign(priority=0, rank=range(1, len(pool) + 1))
@@ -88,12 +88,12 @@ if REAL:
     k = st.columns(4)
     for col, s_ in zip(k[:3], ["GO", "CAUTION", "NO-GO"]):
         col.metric(f"{s_} area", f"{plan.loc[plan.status == s_, 'area_ha'].sum():.0f} ha")
-        col.caption(f"{(plan.status == s_).sum()} fields")
+        col.caption(f"{(plan.status == s_).sum()} plots")
     k[3].metric(f"Doable today with 1 × {machine}", f"{min(cap, go_ha.sum()):.0f} ha")
     k[3].caption(f"capacity {cap:.0f} ha/day ({m['rate_ha_h'].value} ha/h × {prm.CAPACITY['hours_per_day'].value} h)")
-    show = plan.assign(field=plan.parcel_id.map(ui.field_name), crop_=plan.crop.map(lambda c: ui.CROP_WORDS.get(c, c)),
+    show = plan.assign(plot=plan.parcel_id.map(ui.field_name), crop_=plan.crop.map(lambda c: ui.CROP_WORDS.get(c, c)),
                        soil=[ui.soil_word(c, s_) for c, s_ in zip(plan.clay_pct, plan.sand_pct)])
-    st.dataframe(show[["field", "crop_", "area_ha", "soil", "status", "today", "parcel_id"]], hide_index=True,
+    st.dataframe(show[["plot", "crop_", "area_ha", "soil", "status", "today", "parcel_id"]], hide_index=True,
                  width="stretch", height=320,
                  column_config={"crop_": "crop", "area_ha": st.column_config.NumberColumn("Area (ha)", format="%.1f"),
                                 "today": "plan"})
@@ -105,14 +105,14 @@ if REAL:
     st.markdown("Same day, other machines: " + " · ".join(by_machine))
     ui.show_origin("real+modelled+synthetic", False)
 
-with st.expander("Field tiles by crop"):
+with st.expander("Plot tiles by crop"):
     names = {"BARL": "Winter barley", "COWT": "Winter wheat", "RAPE": "Winter rapeseed", "MAIZ": "Maize",
              "SUNF": "Sunflower", "HAY": "Hay", "OLIV": "Olives"}
     order = ["BARL", "COWT", "RAPE"] + sorted(set(farm.crop) - {"BARL", "COWT", "RAPE"})
     for crop in [c for c in order if c in set(farm.crop)]:
         sub = farm[farm.crop == crop].sort_values("area_ha", ascending=False)
         ha = crops.get(crop, {}).get("ha", round(float(sub.area_ha.sum()), 1))
-        st.markdown(f"##### {names.get(crop, crop)} · {len(sub)} fields · {ha} ha")
+        st.markdown(f"##### {names.get(crop, crop)} · {len(sub)} plots · {ha} ha")
         cols = st.columns(6)
         for i, r in enumerate(sub.itertuples()):
             colour = ui.STATUS_COLORS.get(r.status, ui.STATUS_COLORS["not available"])
@@ -125,7 +125,7 @@ with st.expander("Field tiles by crop"):
                     f"<span style='color:{colour};font-weight:700;font-size:0.8rem'>{r.status}</span></div>",
                     unsafe_allow_html=True)
     ui.show_origin("synthetic+modelled", not REAL)
-with st.expander("Parcel table"):
+with st.expander("Plot table"):
     cols = [c for c in ["parcel_id", "crop", "crop_previous", "area_ha", "clay_pct", "sand_pct", "om_pct", "fc_mm",
                         "wp_mm", "status"] if c in farm.columns]
     st.dataframe(farm[cols], hide_index=True, width="stretch")

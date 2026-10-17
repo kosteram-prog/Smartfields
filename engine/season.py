@@ -91,7 +91,7 @@ def priority(parcels: pd.DataFrame) -> pd.DataFrame:
             if s == s else None,
             f"heavy soil, clay {cl:.0f}% (sow while dry)" if cs == 3 else
             f"medium soil, clay {cl:.0f}%" if cs == 2 else f"light soil, clay {cl:.0f}%" if cs == cs else None,
-            f"large parcel {a:.1f} ha" if b else None]))
+            f"large plot {a:.1f} ha" if b else None]))
         for c, s, cl, cs, a, b in zip(out["crop"], out["_sens"], out["_clay"],
                                       clay_cls[out.index.map(parcels.index.get_loc)], out["area_ha"], big[out.index])]
     return out.drop(columns=["_sens", "_clay"]).reset_index(drop=True)

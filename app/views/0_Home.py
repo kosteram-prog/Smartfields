@@ -29,13 +29,13 @@ with c1, st.container(border=True):
     ui.metric("Chance to finish by 15 Oct", f"{s['P_by_deadline']['value']:.0%}", s["P_by_deadline"]["origin"], not REAL)
 with c2, st.container(border=True):
     st.markdown("#### Today")
-    st.write("Can I go on this parcel today with this machine and load? What if I wait?")
-    ui.status_tile(f"Field 869 (barley, heavy clay) with a medium tractor + drill, {pd.Timestamp(replay):%d %b %Y}", t["status"], size="1.8rem")
+    st.write("Can I go on this plot today with this machine and load? What if I wait?")
+    ui.status_tile(f"Plot 869 (barley, heavy clay) with a medium tractor + drill, {pd.Timestamp(replay):%d %b %Y}", t["status"], size="1.8rem")
     ui.show_origin(t["origin"], not REAL)
 with c3, st.container(border=True):
     st.markdown("#### Records")
     st.write("Mark work as done with its conditions; find the root causes of errors in past records.")
     ui.metric("2024 campaign: flags -> root causes", f"{r['n_flags']} -> {r.get('n_root_causes', len(r['cards']))}",
               r["origin"], not REAL)
-st.caption("Decide: Today and Season. Farm: map, records and losses. Data: sources, field zones, connections. "
+st.caption("Decide: Today and Season. Farm: map, records and losses. Data: sources, plot zones, connections. "
            "Every number carries its data origin.")

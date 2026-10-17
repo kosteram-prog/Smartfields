@@ -75,7 +75,7 @@ dl = deadline.strftime("%d %b")
 b1, b2, b3 = st.columns(3)
 with b1:
     ui.metric(f"Chance to finish by {dl} (own machines)", f"{p_own['value']:.0%}", p_own["origin"], stub,
-              help=f"Share of the {p_own.get('n_years', 10)} historical autumns in which every parcel is sown by the deadline")
+              help=f"Share of the {p_own.get('n_years', 10)} historical autumns in which every plot is sown by the deadline")
 with b2:
     if p_with:
         ui.metric(f"With contractor +{contractor} ha/day", f"{p_with['value']:.0%}", p_with["origin"], stub)
@@ -161,19 +161,19 @@ if isinstance(wd, pd.DataFrame) and not wd.empty:
     ui.show_origin("real+modelled", stub)
     w16 = w[(w.year == 2016) & (w.doy < 21)]
     n16 = int((w16["share_go_parcels" if "share_go_parcels" in w16 else "share_go"] >= 0.5).sum())
-    st.caption(f"Autumn 2016: only {n16} days in the first three weeks with GO on at least half of the parcels "
+    st.caption(f"Autumn 2016: only {n16} days in the first three weeks with GO on at least half of the plots "
                f"(machine class {prm.MACHINES[machine]['load_class']}).")
 
 # ------------------------------------------------------------------ parcel order
-st.subheader("Parcel order")
+st.subheader("Plot order")
 order = pd.DataFrame(res["parcel_order"])
 if not order.empty:
-    order.insert(1, "field", order["parcel_id"].map(ui.field_name))
+    order.insert(1, "plot", order["parcel_id"].map(ui.field_name))
 if REAL and not order.empty:
     with st.expander("Change the order (your own priorities)"):
         st.caption("Edit the rank numbers and press Apply; the season is re-simulated with your order.")
-        ed = st.data_editor(order[["rank", "field", "crop", "area_ha", "clay_pct", "parcel_id"]], hide_index=True,
-                            disabled=["field", "parcel_id", "crop", "area_ha", "clay_pct"], key="order_editor")
+        ed = st.data_editor(order[["rank", "plot", "crop", "area_ha", "clay_pct", "parcel_id"]], hide_index=True,
+                            disabled=["plot", "parcel_id", "crop", "area_ha", "clay_pct"], key="order_editor")
         b1, b2 = st.columns(2)
         if b1.button("Apply my order"):
             st.session_state["parcel_order"] = list(ed.sort_values("rank").parcel_id)
@@ -182,14 +182,14 @@ if REAL and not order.empty:
             st.session_state.pop("parcel_order", None)
             st.rerun()
     if st.session_state.get("parcel_order"):
-        st.info("Using your own parcel order instead of the default priority.")
+        st.info("Using your own plot order instead of the default priority.")
 if not order.empty:
     import re
     short = lambda r: re.sub(r"\s*\((?:tolerates later sowing)\)|, clay \d+%|\s*\d+(?:\.\d+)? ha", "",  # noqa: E731
                              str(r)).replace("(less tolerant of late sowing)", "(sensitive to late sowing)") \
-        .replace(" (sow while dry)", ": sow while dry").replace("large parcel", "large")
+        .replace(" (sow while dry)", ": sow while dry").replace("large plot", "large")
     order = order.assign(why=order["reason"].map(short)) if "reason" in order.columns else order
-    cols = [c for c in ["rank", "field", "crop", "area_ha", "clay_pct", "median_done", "why"] if c in order.columns]
+    cols = [c for c in ["rank", "plot", "crop", "area_ha", "clay_pct", "median_done", "why"] if c in order.columns]
     st.dataframe(order[cols], hide_index=True, width="stretch",
                  column_config={"why": "why this order", "median_done": "usually done (median)",
                      "area_ha": st.column_config.NumberColumn("Area (ha)", format="%.1f"),
