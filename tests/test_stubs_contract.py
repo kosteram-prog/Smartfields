@@ -24,8 +24,11 @@ def test_today_demo_cases_13_oct_2016():
     d = "2016-10-13"
     assert stubs.today("PARCEL-0149869", d, "M3", 100)["status"] == "NO-GO"
     assert stubs.today("PARCEL-0149869", d, "M2", 100)["status"] == "CAUTION"
-    assert stubs.today("PARCEL-0149906", d, "M2", 100)["status"] == "GO"
+    t = stubs.today("PARCEL-0149906", d, "M2", 100)
+    assert t["status"] == "GO"
+    assert t["crop"] == "BARL" and t["area_ha"] == 6.34 and t["soil"]["clay_pct"] == 8.0
     assert stubs.wait_cost(d)["eur"] == 790.0
+    assert stubs.economics()["price_eur_t"]["BARL"] == 200.0
 
 
 def test_missing_value_is_not_available_never_zero():

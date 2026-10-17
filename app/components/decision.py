@@ -17,6 +17,9 @@ VERDICT = {"go": ("GO", "Going now costs less than leaving it for later"),
 
 @st.cache_data(show_spinner=False)
 def _wait(date, params):
+    if not REAL:
+        from engine import stubs
+        return stubs.wait_cost(date, dict(params))
     from engine.cost import wait_cost
     return wait_cost(date, dict(params))
 
@@ -25,10 +28,17 @@ def _wait(date, params):
 def _go_ha(holding, date, machine, load, operation, exclude):
     """Area of the other plots that are GO today for this machine (same pool as the season: autumn crops)."""
     import pandas as pd
-    from engine import data, season, soil, status
-    farm = data.load_farm(holding)
-    pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
-    sw = soil.soil_water(pool, data.load_weather(pool.nuts3.iloc[0]))
+    from engine import season, status
+    if REAL:
+        from engine import data, soil
+        farm = data.load_farm(holding)
+        pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
+        sw = soil.soil_water(pool, data.load_weather(pool.nuts3.iloc[0]))
+    else:
+        from engine import stubs
+        farm = stubs.load_farm(holding)
+        pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
+        sw = stubs.soil_water(pool)
     lc, _ = status.axle_load_class(machine, load)
     st_ = status.status_table(sw[sw.date == pd.Timestamp(date)], pool, lc, 1, operation)
     go = st_[(st_.status == "GO") & (st_.parcel_id != exclude)].parcel_id
@@ -43,7 +53,7 @@ def _tile(title, big, sub, colour="#f4f5f7", ink="#1f2328"):
 
 
 def render(t: dict, when, machine: str, load: int, passes: int, tyre_bar=None) -> None:
-    if not REAL or t.get("status") not in ("GO", "CAUTION", "NO-GO"):
+    if t.get("status") not in ("GO", "CAUTION", "NO-GO"):
         return
     from engine.cost import go_now_cost, go_or_wait
     soil, cond = t.get("soil") or {}, t.get("conditions") or {}

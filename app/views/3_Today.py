@@ -4,7 +4,7 @@ import streamlit as st
 
 import config
 import ui
-from components import compaction_panel, decision, farm_map, mark_done, money_line, plan_card
+from components import compaction_panel, decision, farm_map, mark_done, plan_card
 from engine import params as prm
 
 replay = ui.shell("Today")
@@ -155,8 +155,6 @@ if operation == "fertilising":
                 st.markdown(f"Indicative N at risk: **{lo:.0f}-{hi:.0f} kg N/ha** (range, prototype)")
             ui.show_origin(nc["origin"], False)
 decision.render(t, when, machine, load, int(passes), tyre_bar)
-if not REAL:
-    money_line.render(when, {"parcel_id": parcel, "machine_id": machine, "load_pct": load, "passes": int(passes)})
 
 # ------------------------------------------------------------------ row 3: safer plan (shown at once when not GO)
 if t["status"] in ("CAUTION", "NO-GO"):
