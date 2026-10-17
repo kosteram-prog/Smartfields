@@ -20,7 +20,7 @@ st.table(pd.DataFrame([
 ]))
 
 st.subheader("Assumption tables (prototype values with sources, to calibrate in pilots)")
-tabs = st.tabs(["Machines 6.1", "Thresholds 6.4", "Cost of delay 6.8", "Wet traffic 6.8.3", "N check 6.7", "Confidence 7.9",
+tabs = st.tabs(["Machines 6.1", "Thresholds 6.4", "Cost of delay 6.8", "Wet traffic (go now)", "N check 6.7", "Confidence 7.9",
                 "Compaction with tyres"])
 with tabs[0]:
     st.dataframe(pd.DataFrame([{"id": k, "profile": v["profile"], "max axle loaded (t)": v["max_axle_t"].value,
@@ -50,16 +50,24 @@ with tabs[2]:
                f"cap {c['loss_cap_pct'].value} %. Contractor price {c['contractor_price_eur_ha'].value} EUR/ha "
                f"({c['contractor_price_eur_ha'].source}). Headline = weather part; late start shown separately.")
 with tabs[3]:
+    g = prm.GO_NOW_MODEL
+    st.markdown(
+        f"**Go now (Today and Loss calculator)**: year-1 loss % = {g['anchor_pct'].value} % × axle / "
+        f"{g['anchor_axle_t'].value} t (cap {g['axle_factor_max'].value}) × (tyre bar / {g['anchor_bar'].value})^"
+        f"{g['tyre_exponent'].value} × wetness. Wetness = 0 on GO; from the GO limit of the load class to RWC "
+        f"{g['wet_full_rwc'].value} it rises to 1 (at least {g['status_floor'].value['CAUTION']} on CAUTION, "
+        f"{g['status_floor'].value['NO-GO']} on NO-GO). Subsoil: {prm.WET_TRAFFIC_LOSS['persistent']['pct_per_year'].value} "
+        "% of yield per year × the subsoil overstress of the compaction check relative to an 11 t / 2 bar / wet "
+        "clay-loam anchor, for ~10 years.")
+    st.dataframe(pd.DataFrame([{"class": k, "default tyre (bar)": v} for k, v in g["default_tyre_bar"].value.items()]),
+                 hide_index=True)
+    st.caption(f"Anchor: {g['anchor_pct'].source}. Subsoil: {prm.WET_TRAFFIC_LOSS['persistent']['pct_per_year'].source}. "
+               "Exponents, caps and default tyres are assumptions: illustrative, to calibrate in pilots.")
     w = prm.WET_TRAFFIC_LOSS
-    st.dataframe(pd.DataFrame([{"class": k, "NO-GO year-1 loss %": w["NO-GO"][k].value,
-                                "CAUTION year-1 loss %": w["CAUTION"][k].value} for k in w["NO-GO"]]), hide_index=True)
-    pers = w["persistent"]
-    st.caption(f"Applied to {w['trafficked_share'].value:.0%} of the plot (trafficked share, editable). Anchor: "
-               "Håkansson multi-site study (10-12 t axle ~15 % year-1 loss). L3/L4 and the CAUTION factor are "
-               "interpolated: illustrative, needs calibration.")
-    st.caption(f"Long-term subsoil part (shown separately): {pers['pct_per_year'].value} % of yield per year for "
-               f"~{pers['years'].value} years on the trafficked area, L5 (L4 x0.5), NO-GO (CAUTION x0.5); with tyre data "
-               f"it follows the subsoil class (red x1, yellow x0.5). Source: {pers['pct_per_year'].source}.")
+    with st.expander("Status x load-class table (used for the farm's past records, which have no machine or tyre data)"):
+        st.dataframe(pd.DataFrame([{"class": k, "NO-GO year-1 loss %": w["NO-GO"][k].value,
+                                    "CAUTION year-1 loss %": w["CAUTION"][k].value} for k in w["NO-GO"]]),
+                     hide_index=True)
 with tabs[4]:
     n = prm.N_RULES
     st.markdown(f"- **High:** any day >= {n['heavy_rain']['rain_mm'].value:g} mm from the application day to "

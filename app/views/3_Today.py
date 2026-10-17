@@ -4,7 +4,7 @@ import streamlit as st
 
 import config
 import ui
-from components import compaction_panel, go_now_line, mark_done, money_line, plan_card
+from components import compaction_panel, decision, mark_done, money_line, plan_card
 from engine import params as prm
 
 replay = ui.shell("Today")
@@ -112,14 +112,9 @@ with c_why:
                 f"{conf if isinstance(conf, str) else f'{conf}%'}</b></small>", unsafe_allow_html=True)
     st.markdown(f"**Best next check:** {t['best_next_check']}")
 
-# ------------------------------------------------------------------ row 2: the money, side by side
-m_go, m_wait = st.columns(2)
-with m_go, st.container(border=True):
-    go_now_line.render(t)
-with m_wait, st.container(border=True):
-    if operation == "sowing":
-        money_line.render(when, {"parcel_id": parcel, "machine_id": machine, "load_pct": load, "passes": int(passes)})
-    elif operation == "fertilising":
+# ------------------------------------------------------------------ row 2: go now or wait, in euro
+if operation == "fertilising":
+    with st.container(border=True):
         n_rate = st.number_input("N in this application (kg N/ha)", min_value=0.0, value=None, step=10.0,
                                  placeholder="enter the N rate")
         if not REAL:
@@ -136,8 +131,9 @@ with m_wait, st.container(border=True):
                 lo, hi = nc["n_at_risk_kg_ha"]
                 st.markdown(f"Indicative N at risk: **{lo:.0f}-{hi:.0f} kg N/ha** (range, prototype)")
             ui.show_origin(nc["origin"], False)
-    else:
-        st.caption("Waiting cost is modelled for autumn sowing only.")
+decision.render(t, when, machine, load, int(passes), tyre_bar)
+if not REAL:
+    money_line.render(when, {"parcel_id": parcel, "machine_id": machine, "load_pct": load, "passes": int(passes)})
 
 # ------------------------------------------------------------------ row 3: safer plan (shown at once when not GO)
 if t["status"] in ("CAUTION", "NO-GO"):

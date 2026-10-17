@@ -377,3 +377,133 @@ def avoidable_losses(holding_id: str | None = None) -> dict:
             "label": "upper bound, illustrative",
             "note": "Synthetic operation dates are random with respect to weather; real farmers already avoid some "
                     "of the worst days, so the realistic share is lower (e.g. half)."}
+
+
+# --------------------------------------------------------------------------- continuous "if you go now" (17 Oct evening)
+def _overstress(check: dict, layer: str) -> float:
+    p = check["profile"]
+    p = p[p.layer == layer]
+    return float(np.mean(np.clip(1.0 - p.strength_kpa / p.stress_kpa, 0.0, None)))
+
+
+def _subsoil_anchor() -> float:
+    from engine import compaction
+    a = prm.GO_NOW_MODEL["subsoil_anchor"].value
+    return _overstress(compaction.check(a["wheel_t"], a["bar"], a["clay"], a["sand"], a["om"], a["rwc"]), "subsoil")
+
+
+def go_now_cost(status: str, rwc_eff, axle_t, load_class: str, clay_pct, sand_pct, om_pct, crop: str, area_ha,
+                inflation_bar=None, passes: int = 1, params: dict | None = None) -> dict:
+    """'If you go now' that reacts to the machine, the tyres and how wet the soil is.
+
+    year-1 % = anchor (15 %) x min(cap, axle / 11 t) x (bar / 2.0)^0.5 x wetness
+      wetness = 0 on GO; otherwise (RWC - GO limit of the class) / (1.10 - GO limit), at least 0.25 (CAUTION) /
+      0.5 (NO-GO) so a NO-GO from rain still counts
+    subsoil %/yr = RECARE 6 % x min(cap, subsoil overstress / anchor overstress) from the compaction check
+      (Söhne stress vs precompression stress at 30-80 cm, same wetness), only when the status is not GO
+    EUR = % x trafficked share x area x expected yield x price. Illustrative, needs calibration.
+    """
+    from engine import compaction
+    from engine.status import _thresholds
+    m, p = prm.GO_NOW_MODEL, params or {}
+    bar = float(inflation_bar) if _num(inflation_bar) else m["default_tyre_bar"].value.get(load_class, 1.4)
+    out = {"status": status, "load_class": load_class, "axle_t": axle_t, "inflation_bar": bar, "unit": "EUR",
+           "method": "continuous", "label": "illustrative, needs calibration", "origin": "modelled+synthetic+assumption",
+           "persistent_years": prm.WET_TRAFFIC_LOSS["persistent"]["years"].value}
+    if not all(_num(v) for v in (rwc_eff, axle_t, clay_pct, sand_pct)):
+        return out | {"eur": NA, "loss_pct": NA, "persistent_eur_per_year": NA, "persistent_eur_total": NA}
+    go_thr, _ = _thresholds(load_class, float(clay_pct), float(sand_pct), passes)
+    go_thr = float(go_thr)
+    if status == "GO":
+        wet = 0.0
+    else:
+        span = max(1e-6, m["wet_full_rwc"].value - go_thr)
+        wet = float(np.clip((float(rwc_eff) - go_thr) / span, 0.0, 1.0))
+        wet = max(wet, m["status_floor"].value.get(status, 0.0))
+    axle_f = min(m["axle_factor_max"].value, (float(axle_t) / m["anchor_axle_t"].value) ** m["axle_exponent"].value)
+    tyre_f = (bar / m["anchor_bar"].value) ** m["tyre_exponent"].value
+    pct1 = m["anchor_pct"].value * axle_f * tyre_f * wet
+    sub_f, sub_class = 0.0, None
+    if status != "GO":
+        chk = compaction.check(float(axle_t) / 2.0, bar, clay_pct, sand_pct, om_pct if _num(om_pct) else 2.0,
+                               float(rwc_eff))
+        if chk.get("assessed", True) and "profile" in chk:
+            sub_f = min(m["subsoil_factor_max"].value, _overstress(chk, "subsoil") / max(1e-6, _subsoil_anchor()))
+            sub_class = chk.get("subsoil")
+    pers_rate = prm.WET_TRAFFIC_LOSS["persistent"]["pct_per_year"].value
+    pct_sub = pers_rate * sub_f
+    share = p.get("trafficked_share", prm.WET_TRAFFIC_LOSS["trafficked_share"].value)
+    yld = (p.get("yield_t_ha") or {}).get(crop)
+    prc = (p.get("price_eur_t") or {}).get(crop)
+    if yld is None or prc is None:
+        try:
+            econ = default_economics(p.get("holding_id"))
+            yld = econ["yield_t_ha"].get(crop) if yld is None else yld
+            prc = econ["price_eur_t"].get(crop) if prc is None else prc
+        except Exception:
+            pass
+    out |= {"loss_pct": round(pct1, 2), "persistent_pct_per_year": round(pct_sub, 2), "trafficked_share": share,
+            "drivers": {"wetness": round(wet, 2), "axle": round(axle_f, 2), "tyre": round(tyre_f, 2),
+                        "subsoil": round(sub_f, 2), "go_limit_rwc": round(go_thr, 3)},
+            "subsoil_class": sub_class}
+    if not (_num(yld) and _num(prc) and _num(area_ha)):
+        return out | {"eur": NA, "persistent_eur_per_year": NA, "persistent_eur_total": NA}
+    base = share * float(area_ha) * float(yld) * float(prc) / 100.0
+    per_year = pct_sub * base
+    return out | {"eur": round(pct1 * base, 0), "persistent_eur_per_year": round(per_year, 0),
+                  "persistent_eur_total": round(per_year * out["persistent_years"], 0),
+                  "trafficked_ha": round(share * float(area_ha), 2), "yield_t_ha": yld, "price_eur_t": prc,
+                  "eur_per_pct": round(base, 1)}
+
+
+def go_or_wait(go: dict, wait: dict) -> dict:
+    """Compare 'go now' (year 1 + subsoil years, undiscounted) with 'wait one day' and say which costs less."""
+    g1, gp = go.get("eur"), go.get("persistent_eur_total")
+    w = wait.get("eur")
+    if not (_num(g1) and _num(w)):
+        return {"verdict": NA, "go_total": NA, "wait": w}
+    gt = float(g1) + (float(gp) if _num(gp) else 0.0)
+    if gt == 0:
+        v = "go"
+    elif gt < 0.8 * w:
+        v = "go"
+    elif gt > 1.25 * w:
+        v = "wait"
+    else:
+        v = "close"
+    return {"verdict": v, "go_total": round(gt, 0), "go_year1": g1, "wait": w,
+            "difference": round(gt - float(w), 0)}
+
+
+def day_plan_cost(plots: pd.DataFrame, capacity_ha: float, wait_eur=None) -> dict:
+    """Today's work for one machine: GO plots first (EUR 0); if they do not fill the day, the cheapest wet plots
+    (EUR per ha, year 1 + subsoil years) until the capacity is used. Compared with leaving that area for later.
+
+    plots: status, area_ha, year1_eur, subsoil_eur_total (per plot). wait_eur: cost of skipping the whole day.
+    """
+    go_ha = float(plots.loc[plots.status == "GO", "area_ha"].sum())
+    out = {"capacity_ha": float(capacity_ha), "go_ha": round(go_ha, 1), "wet_plan": [], "wet_ha": 0.0,
+           "wet_eur": 0.0, "wait_part_eur": NA}
+    if go_ha >= capacity_ha:
+        return out | {"verdict": "go_plots_only", "message": f"GO plots ({go_ha:.0f} ha) fill today's capacity "
+                      f"(~{capacity_ha:.0f} ha): no reason to drive on wet soil."}
+    need = capacity_ha - go_ha
+    wet = plots[plots.status.isin(["CAUTION", "NO-GO"])].copy()
+    wet["total"] = pd.to_numeric(wet.year1_eur, errors="coerce").fillna(0) + \
+        pd.to_numeric(wet.subsoil_eur_total, errors="coerce").fillna(0)
+    wet = wet[wet.area_ha > 0].assign(per_ha=lambda d: d.total / d.area_ha).sort_values("per_ha")
+    plan, eur, ha = [], 0.0, 0.0
+    for r in wet.itertuples():
+        if ha >= need:
+            break
+        take = min(float(r.area_ha), need - ha)
+        plan.append({"parcel_id": r.parcel_id, "ha": round(take, 1), "eur": round(r.per_ha * take, 0)})
+        eur += r.per_ha * take
+        ha += take
+    out |= {"wet_plan": plan, "wet_ha": round(ha, 1), "wet_eur": round(eur, 0)}
+    if not _num(wait_eur):
+        return out | {"verdict": NA}
+    part = float(wait_eur) * ha / capacity_ha if capacity_ha > 0 else NA
+    v = go_or_wait({"eur": eur, "persistent_eur_total": 0.0}, {"eur": part})["verdict"]
+    return out | {"wait_part_eur": round(part, 0), "verdict": {"go": "fill_with_wet", "wait": "go_plots_only_wait",
+                                                               "close": "close"}.get(v, v)}
