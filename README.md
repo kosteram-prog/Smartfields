@@ -31,7 +31,7 @@ Demo: farm **FARM-13525** (PL415, Poznań region), **replay mode**: historical A
 | `engine/explain.py` | Plain-language explanation: template; optional AI rewrite that cannot change values (`ANTHROPIC_API_KEY`) | 7.14 |
 | `engine/stubs.py` | Placeholder outputs for every contract function (used until a module exists) | - |
 
-## Run it (Windows, Python 3.11+)
+## Run it (Windows, Python 3.10+; tested on 3.10 and 3.13)
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate

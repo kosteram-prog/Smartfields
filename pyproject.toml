@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "fieldgo"
 version = "0.1.0"
 description = "FieldGo - EU Agri-Hackathon 2026, Challenge #2"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 
 [tool.setuptools]
 packages = ["engine"]
