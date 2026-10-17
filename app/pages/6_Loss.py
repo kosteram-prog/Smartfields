@@ -22,12 +22,12 @@ from engine import data, season, soil, status  # noqa: E402
 from engine.cost import default_economics, entry_cost, wait_cost  # noqa: E402
 
 c = st.columns(4)
-machine = c[0].selectbox("Machine", list(prm.MACHINES), index=2, format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
-load = c[1].slider("Load (%)", 0, 100, 100)
-operation = c[2].selectbox("Operation", ["sowing", "fertilising", "spraying"])
+machine = ui.pick(c[0], "selectbox", "Machine", "machine", list(prm.MACHINES), format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
+load = ui.pick(c[1], "slider", "Load (%)", "load", min_value=0, max_value=100)
+operation = ui.pick(c[2], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
 share = c[3].slider("Trafficked share of each parcel (%)", 10, 100,
                     int(prm.WET_TRAFFIC_LOSS["trafficked_share"].value * 100),
-                    help="Share of the field driven over by the wheels (lower with tramlines). Spec 6.8.3")
+                    help="Share of the field driven over by the wheels (lower with tramlines).")
 
 
 @st.cache_data(show_spinner="Status of every parcel...")
@@ -56,7 +56,7 @@ st.caption(f"{pd.Timestamp(replay):%d %b %Y} · {machine} at {load}% -> axle {ax
 k = st.columns(3)
 with k[0]:
     ui.metric("Go now on every CAUTION / NO-GO parcel", ui.fmt_eur(float(num[wet.index].sum())), "synthetic+assumption",
-              False, help="Year-1 yield loss on the trafficked area (spec 6.8.3); part of it can last for years")
+              False, help="Year-1 yield loss on the trafficked area; part of it can last for years")
     per = pd.to_numeric(t.subsoil_eur_per_year, errors="coerce")[wet.index].sum()
     st.caption(f"{len(wet)} parcels, {wet.area_ha.sum():.0f} ha"
                + (f" · plus ~{ui.fmt_eur(float(per))} per year for ~{prm.WET_TRAFFIC_LOSS['persistent']['years'].value} "
@@ -114,7 +114,7 @@ else:
 
 with st.expander("Method and assumptions"):
     st.markdown(f"""
-- **Status** per parcel: soil-water model + thresholds by axle-load class (spec 6.4) for this machine and load.
+- **Status** per parcel: soil-water model + thresholds by axle-load class for this machine and load.
 - **If you go now** = loss % x trafficked share x area x expected yield x price. Loss % (year 1) by status and class:
   NO-GO L3 5 %, L4 10 %, L5 15 %; CAUTION half of that; L1-L2 not counted. Anchor: Håkansson multi-site study
   (10-12 t axle load ~15 % year-1 loss); L3/L4 values are interpolated. Long-term subsoil part: 6 % of yield per year

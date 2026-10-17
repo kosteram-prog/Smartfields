@@ -1,4 +1,4 @@
-"""Records page (owner: Marek). Tab 'New records' = Mirela's component, 'Record check' = Marek's."""
+"""Records page: records created with 'Mark as done' (download) and the check of past records."""
 import streamlit as st
 
 import ui
@@ -6,7 +6,8 @@ from components import new_records, record_check
 from engine import params as prm
 
 ui.shell("Records")
-tab_new, tab_check = st.tabs(["New records", "Record check"])
+n_new = len(st.session_state.get("records", []))
+tab_new, tab_check = st.tabs([f"New records ({n_new})", "Record check"])
 with tab_new:
     new_records.render()
 with tab_check:

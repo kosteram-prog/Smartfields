@@ -47,7 +47,7 @@ st.caption(f"{fs['holding_id']} · {fs['nuts3']} (Wielkopolska, Poznań region) 
            f"{awu if isinstance(awu, str) else f'{awu} AWU'} · {'organic' if fs.get('organic') else 'not organic'} · "
            "synthetic farm from the organisers' dataset")
 
-machine = st.selectbox("Machine for today's status", list(prm.MACHINES), index=1,
+machine = ui.pick(st, "selectbox", "Machine for today's status", "machine", list(prm.MACHINES),
                        format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']} (full load)")
 if REAL:
     statuses, lc = _status(holding, pd.Timestamp(replay), machine)

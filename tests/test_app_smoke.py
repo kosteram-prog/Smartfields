@@ -15,3 +15,23 @@ def test_page_runs(page):
     at = AppTest.from_file(str(APP / page), default_timeout=30).run()
     assert not at.exception, at.exception
     assert any("Replay mode" in i.value for i in at.info)
+
+
+ROUTED = ["pages/3_Today.py", "pages/6_Loss.py", "pages/1_Farm.py", "pages/2_Season.py"]
+
+
+@pytest.mark.needs_data
+def test_router_shares_machine_across_pages():
+    """B3/B4: the router renders sections; a machine chosen on Today is the machine on Loss and Farm."""
+    at = AppTest.from_file(str(APP / "main.py"), default_timeout=60).run()
+    assert not at.exception, at.exception
+    at.switch_page("pages/3_Today.py").run()
+    assert not at.exception, at.exception
+    sel = next(s for s in at.selectbox if s.label == "Machine")
+    sel.set_value("M4").run()
+    for page in ROUTED[1:]:
+        at.switch_page(page).run()
+        assert not at.exception, at.exception
+        assert at.session_state["machine"] == "M4"
+        m = [s for s in at.selectbox if s.label.startswith("Machine")]
+        assert m and m[0].value == "M4", page

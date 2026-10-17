@@ -51,22 +51,55 @@ def fmt_eur(x) -> str:
     return "not available" if not isinstance(x, (int, float)) else f"EUR {x:,.0f}"
 
 
-def shell(title: str) -> dt.date:
-    """Page config, sidebar (farm, replay date), mode banner and origin legend. Returns the replay date."""
-    st.set_page_config(page_title=f"FieldGo - {title}", page_icon="🌾", layout="wide")
+SHARED = {"machine": "M2", "parcel": "PARCEL-0149869", "load": 100, "operation": "sowing"}   # B4: kept across pages
+
+
+def init_state() -> None:
+    """Defaults for the shared selections (farm, replay date, machine, parcel, load, operation)."""
+    st.session_state.setdefault("farm", prm.DEMO["holding_id"].value)
+    st.session_state.setdefault("replay_date", dt.date.fromisoformat(prm.DEMO["replay_date"].value))
+    for k, v in SHARED.items():
+        st.session_state.setdefault(k, v)
+
+
+def sidebar(real: bool = True) -> None:
+    """Shared sidebar, rendered once by the router (app/main.py) so its values survive page switches."""
+    init_state()
     with st.sidebar:
         st.markdown("### 🌾 FieldGo")
         st.selectbox("Farm", [prm.DEMO["holding_id"].value], key="farm",
                      help="FARM-13525 (PL415, Poznan region) is the only demo farm.")
         lo, hi = prm.DEMO["replay_year_min"].value, prm.DEMO["replay_year_max"].value
-        st.date_input("Replay date", value=dt.date.fromisoformat(prm.DEMO["replay_date"].value),
-                      min_value=dt.date(lo, 1, 1), max_value=dt.date(hi, 12, 31), key="replay_date")
-        st.caption("Data origin")
-        st.markdown(
-            "".join(f"<div>{_pill(k, ORIGIN_COLORS[k])} <small>{v}</small></div>" for k, v in prm.ORIGINS.items()),
-            unsafe_allow_html=True)
-        st.markdown(f"<div style='margin-top:8px'>{stub_badge()} <small>placeholder number from engine/stubs.py</small></div>",
-                    unsafe_allow_html=True)
+        st.date_input("Replay date", min_value=dt.date(lo, 1, 1), max_value=dt.date(hi, 12, 31), key="replay_date",
+                      help="The app replays a past day: the weather that followed plays the forecast.")
+        with st.expander("Data origin labels"):
+            st.markdown(
+                "".join(f"<div>{_pill(k, ORIGIN_COLORS[k])} <small>{v}</small></div>" for k, v in prm.ORIGINS.items())
+                + ("" if real else f"<div style='margin-top:8px'>{stub_badge()} <small>placeholder number</small></div>"),
+                unsafe_allow_html=True)
+
+
+def pick(container, kind: str, label: str, name: str, options=None, **kw):
+    """A widget whose value is shared across pages (B4): parcel, machine, load, operation.
+
+    Streamlit drops a widget's state when the page changes; the value lives in st.session_state[name] instead.
+    """
+    init_state()
+    wkey = f"_w_{name}"
+    if options is not None and st.session_state[name] not in list(options):
+        st.session_state[name] = list(options)[0]
+    st.session_state[wkey] = st.session_state[name]       # re-seed: the widget may be new on this page
+
+    def _sync():
+        st.session_state[name] = st.session_state[wkey]
+    fn = getattr(container, kind)
+    args = (label, options) if options is not None else (label,)
+    return fn(*args, key=wkey, on_change=_sync, **kw)
+
+
+def shell(title: str) -> dt.date:
+    """Mode banner and page title. Returns the replay date (shared, set in the sidebar)."""
+    init_state()
     st.info(BANNER, icon="⏪")
     st.title(title)
     return st.session_state["replay_date"]

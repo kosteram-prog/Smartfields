@@ -31,7 +31,7 @@ with st.expander("Inputs", expanded=True):
                             format="DD.MM.YYYY", help="Year is ignored: every autumn 2015-2024 is simulated")
     deadline = c[1].date_input("Deadline", dt.date(2016, *map(int, prm.SEASON["deadline"].value.split("-"))),
                                format="DD.MM.YYYY")
-    machine = c[2].selectbox("Machine", list(prm.MACHINES), index=1,
+    machine = ui.pick(c[2], "selectbox", "Machine", "machine", list(prm.MACHINES),
                              format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
     units = c[3].number_input("Own units", 1, 5, int(prm.CAPACITY["own_units"].value))
     c = st.columns(4)
@@ -79,9 +79,16 @@ with b1:
 with b2:
     if p_with:
         ui.metric(f"With contractor +{contractor} ha/day", f"{p_with['value']:.0%}", p_with["origin"], stub)
-    else:
-        st.metric("With contractor", "set extra ha/day")
 rec = res["contractor_recommendation"]
+if not p_with:
+    with b2:
+        if isinstance(rec.get("p_with"), (int, float)) and isinstance(rec.get("extra_ha_day"), (int, float)) \
+                and rec["extra_ha_day"] > 0:
+            ui.metric(f"With the recommended contractor (+{rec['extra_ha_day']:g} ha/day)", f"{rec['p_with']:.0%}",
+                      rec["origin"], stub, help="Smallest contractor capacity that reaches the target share of autumns. "
+                                                 "Set 'Contractor (extra ha/day)' above to try your own.")
+        else:
+            st.metric("With contractor", "not needed" if p_own["value"] >= rec.get("target_p", 0.9) else "not available")
 with b3, st.container(border=True):
     st.markdown("**Recommendation**")
     st.write(rec.get("message") or "not available")
@@ -175,16 +182,18 @@ if REAL and not order.empty:
             st.session_state.pop("parcel_order", None)
             st.rerun()
     if st.session_state.get("parcel_order"):
-        st.info("Using your own parcel order (spec 7.6 default replaced).")
+        st.info("Using your own parcel order instead of the default priority.")
 if not order.empty:
-    cols = [c for c in ["rank", "field", "crop", "area_ha", "clay_pct", "priority", "median_done",
-                        "share_years_late", "reason"] if c in order.columns]
+    import re
+    short = lambda r: re.sub(r"\s*\((?:tolerates later sowing)\)|, clay \d+%|\s*\d+(?:\.\d+)? ha", "",  # noqa: E731
+                             str(r)).replace("(less tolerant of late sowing)", "(sensitive to late sowing)") \
+        .replace(" (sow while dry)", ": sow while dry").replace("large parcel", "large")
+    order = order.assign(why=order["reason"].map(short)) if "reason" in order.columns else order
+    cols = [c for c in ["rank", "field", "crop", "area_ha", "clay_pct", "median_done", "why"] if c in order.columns]
     st.dataframe(order[cols], hide_index=True, width="stretch",
-                 column_config={"share_years_late": st.column_config.ProgressColumn(
-                     "Years late", format="percent", min_value=0, max_value=1),
+                 column_config={"why": "why this order", "median_done": "usually done (median)",
                      "area_ha": st.column_config.NumberColumn("Area (ha)", format="%.1f"),
                      "clay_pct": st.column_config.NumberColumn("Clay %", format="%.0f")})
     ui.show_origin("synthetic+assumption+modelled", stub)
     st.caption("Heavy soils first while they are dry; rapeseed and barley are less tolerant of late sowing than wheat.")
-if REAL:
-    st.caption(f"Day statuses from: {res.get('status_source')}")
+

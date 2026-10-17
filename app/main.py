@@ -1,40 +1,47 @@
-"""FieldGo entry page. Run from the repo root: streamlit run app/main.py"""
-import pandas as pd
+"""FieldGo router. Run from the repo root: streamlit run app/main.py
+
+Renders the shared sidebar once (farm, replay date) and the navigation in sections, then the selected page.
+"""
 import streamlit as st
 
 import config
 import ui
 
-replay = ui.shell("FieldGo")
+st.set_page_config(page_title="FieldGo", page_icon="🌾", layout="wide")
 REAL = config.data_dir_or_none() is not None
-st.subheader("Plan the season. Decide today. Keep clean records.")
 
 
-@st.cache_data(show_spinner="Loading...")
-def headline(date):
-    if REAL:
-        from engine.lint import lint_records
-        from engine.season import season
-        from engine.today import today
-        return season({}), today("PARCEL-0149869", date, "M2", 100, 1, "sowing"), lint_records("FARM-13525", 2024)
-    from engine import stubs
-    return stubs.season({}), stubs.today("PARCEL-0149869", date, "M2", 100), stubs.lint_records()
+@st.cache_resource(show_spinner=False)
+def _warm_up() -> bool:
+    """B9: fill the engine's process-wide caches (data, soil water, season inputs) in the background, once per server."""
+    import threading
+
+    def run():
+        try:
+            import pandas as pd
+            from engine.season import season
+            from engine.today import today
+            today("PARCEL-0149869", pd.Timestamp(ui.prm.DEMO["replay_date"].value), "M2", 100, 1, "sowing")
+            season({})
+        except Exception:  # noqa: BLE001  (warm-up is best effort; pages compute on demand anyway)
+            pass
+    threading.Thread(target=run, daemon=True).start()
+    return True
 
 
-s, t, r = headline(pd.Timestamp(replay))
-c1, c2, c3 = st.columns(3)
-with c1, st.container(border=True):
-    st.markdown("#### Season")
-    st.write("Will I finish autumn sowing by my deadline? Do I need a contractor? What does delay cost?")
-    ui.metric("Chance to finish by 15 Oct", f"{s['P_by_deadline']['value']:.0%}", s["P_by_deadline"]["origin"], not REAL)
-with c2, st.container(border=True):
-    st.markdown("#### Today")
-    st.write("Can I go on this parcel today with this machine and load? What if I wait?")
-    ui.status_tile(f"PARCEL-0149869 (clay 55%) with M2, {pd.Timestamp(replay):%d %b %Y}", t["status"], size="1.8rem")
-    ui.show_origin(t["origin"], not REAL)
-with c3, st.container(border=True):
-    st.markdown("#### Records")
-    st.write("Mark work as done with its conditions; find the root causes of errors in past records.")
-    ui.metric("2024 campaign: flags -> root causes", f"{r['n_flags']} -> {r.get('n_root_causes', len(r['cards']))}",
-              r["origin"], not REAL)
-st.caption("Use the pages in the sidebar. Every number carries its data origin.")
+if REAL:
+    _warm_up()
+ui.sidebar(real=REAL)
+P = "pages/"
+nav = st.navigation({
+    "": [st.Page(P + "0_Home.py", title="Home", icon="🏠", default=True)],
+    "Decide": [st.Page(P + "3_Today.py", title="Today", icon="🚜"),
+               st.Page(P + "2_Season.py", title="Season", icon="📅")],
+    "Farm": [st.Page(P + "1_Farm.py", title="Farm map", icon="🗺️"),
+             st.Page(P + "4_Records.py", title="Records", icon="📝"),
+             st.Page(P + "6_Loss.py", title="Loss calculator", icon="💶")],
+    "Data": [st.Page(P + "5_About.py", title="About the data", icon="ℹ️"),
+             st.Page(P + "7_Satellite.py", title="Field zones", icon="🛰️"),
+             st.Page(P + "8_Connect.py", title="Connect", icon="🔌")],
+})
+nav.run()

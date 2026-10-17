@@ -6,8 +6,16 @@ import streamlit as st
 def render() -> None:
     recs = st.session_state.get("records", [])
     if not recs:
-        st.info("No records yet. Use 'Mark as done' on the Today page.")
+        with st.container(border=True):
+            st.markdown("**No records in this session yet.**")
+            st.caption("On the Today page, press **Mark as done** after the work: FieldGo saves the operation together "
+                       "with the day's soil status, weather and machine, ready for your farm records.")
+            try:
+                st.page_link("pages/3_Today.py", label="Go to Today", icon="🚜")
+            except Exception:  # noqa: BLE001  (page run on its own, without the router)
+                pass
         return
+    st.caption(f"{len(recs)} record(s) created in this session.")
     df = pd.DataFrame(recs)
     if "parcel_id" in df:
         import ui

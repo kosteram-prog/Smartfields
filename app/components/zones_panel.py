@@ -7,13 +7,21 @@ from config import ASSETS_DIR
 ZONES = [("wettest: check first / avoid when wet", 20.8), ("normal", 41.5), ("drier", 20.8)]   # ha, pre-event test
 
 
-def render() -> None:
+def render(inline: bool = False) -> None:
+    """inline=True: tabs straight on the page (Field zones page); otherwise inside an expander."""
+    if inline:
+        _tabs()
+        return
     with st.expander("Field zones: where to be careful on a real field (Sentinel-1 radar, Sentinel-2 NDVI)"):
-        wet, prod = st.tabs(["Wetness after rain (radar, Oct 2016)", "Productivity (NDVI, 2017-2024)"])
-        with wet:
-            _radar()
-        with prod:
-            _ndvi()
+        _tabs()
+
+
+def _tabs() -> None:
+    wet, prod = st.tabs(["Wetness after rain (radar, Oct 2016)", "Productivity (NDVI, 2017-2024)"])
+    with wet:
+        _radar()
+    with prod:
+        _ndvi()
 
 
 def _radar() -> None:

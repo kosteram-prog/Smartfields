@@ -1,4 +1,4 @@
-"""Satellite page (owner: Mirela): Copernicus / Sentinel view with env-token + public fallback."""
+"""Field zones page: Sentinel-1 wetness zones, Sentinel-2 productivity zones, and the Sentinel view of the region."""
 from __future__ import annotations
 
 import os
@@ -7,10 +7,15 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 import ui
+from components import zones_panel
 from engine import params as prm
 from engine import stubs
 
-ui.shell("Satellite")
+ui.shell("Field zones")
+st.caption("Inside one field the soil is not the same: where it stays wet after rain, and where the crop grows "
+           "better or worse. Both layers come from free Copernicus satellites.")
+zones_panel.render(inline=True)
+st.markdown("#### Satellite view of the region")
 st.caption(
     "Sentinel imagery over the demo farm region. Optional "
     f"`{prm.SATELLITE['env_token_name'].value}` enables a live CDSE connection path; "
