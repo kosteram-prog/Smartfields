@@ -7,6 +7,10 @@ import pytest
 LAYOUT = Path(__file__).resolve().parents[1] / "app" / "assets" / "farm_layout.json"
 
 
+def test_demo_picture_is_shipped():
+    assert (LAYOUT.parent / "farm_map_demo.jpg").is_file()
+
+
 def test_layout_has_30_closed_fields():
     lay = json.loads(LAYOUT.read_text())
     assert len(lay["fields"]) == 30

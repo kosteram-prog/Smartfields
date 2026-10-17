@@ -67,6 +67,17 @@ if REAL:
                    "(GUGiK, geoportal.gov.pl, open data). The location is illustrative: the organisers' plot shapes "
                    "are placeholders. Crop, real area, soil and status on hover come from the data and the engine. "
                    "In production: the farmer's own IACS field boundaries.")
+else:
+    demo = config.ASSETS_DIR / "farm_map_demo.jpg"
+    st.markdown("#### Farm map: who can go where")
+    if demo.is_file():
+        st.image(str(demo), width="stretch")
+        st.caption("Demo holding FARM-13525 on 11 Oct 2016, tractor and drill (M2): "
+                   "16 plots GO, 7 CAUTION, 7 NO-GO. Outlines traced from a public orthophoto "
+                   "(GUGiK, geoportal.gov.pl). The place is illustrative; the colours are the FieldGo engine. "
+                   "With the organisers' data extracts this map follows the replay date and the machine above.")
+    else:
+        st.info("Farm map image is missing (app/assets/farm_map_demo.jpg).")
 
 # ------------------------------------------------------------------ A1: today's plan for the whole farm
 if REAL:
