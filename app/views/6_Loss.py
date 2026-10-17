@@ -16,12 +16,14 @@ replay = ui.shell("Loss calculator")
 st.caption("Drive on the wet plots today, or wait? Both answers in euro, from the same engine as Today and Season. "
            "Change the machine, the tyres or the tramlines and watch the numbers move. Illustrative values: synthetic "
            "yield and price, loss rates from published anchors, to calibrate in pilots.")
-if config.data_dir_or_none() is None:
-    st.warning("FIELDGO_DATA_DIR is not set: the loss calculator needs the data extracts.")
-    st.stop()
-
-from engine import data, season, soil, status  # noqa: E402
-from engine.cost import day_plan_cost, default_economics, go_now_cost, wait_cost  # noqa: E402
+REAL = config.data_dir_or_none() is not None
+if REAL:
+    from engine import data, season, soil, status  # noqa: E402
+    from engine.cost import day_plan_cost, default_economics, go_now_cost, wait_cost  # noqa: E402
+else:
+    from engine import season, status, stubs  # noqa: E402
+    from engine.cost import day_plan_cost, default_economics, go_now_cost  # noqa: E402
+    st.caption("No data extracts: six demo plots, stub yield and price. Move the sliders — the euros change.")
 
 M = prm.GO_NOW_MODEL
 Y1, SUB = "#2a78d6", "#e87ba4"            # validated pair (dataviz validator): year 1 / subsoil years
@@ -43,9 +45,14 @@ price_adj = c[1].slider("Grain price vs default (%)", 50, 150, 100, 10)
 
 @st.cache_data(show_spinner="Soil water of every plot...")
 def _day(holding, date, operation):
-    farm = data.load_farm(holding)
-    pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
-    sw = soil.soil_water(pool, data.load_weather(pool.nuts3.iloc[0]))
+    if REAL:
+        farm = data.load_farm(holding)
+        pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
+        sw = soil.soil_water(pool, data.load_weather(pool.nuts3.iloc[0]))
+    else:
+        farm = stubs.load_farm(holding)
+        pool = farm[farm.crop.isin(season.autumn_crops())] if operation == "sowing" else farm
+        sw = stubs.soil_water(pool)
     return pool, sw[sw.date == pd.Timestamp(date)]
 
 
@@ -83,7 +90,7 @@ st.caption(f"{day:%d %b %Y} · {prm.MACHINES[machine]['profile']} at {load}% →
 # ------------------------------------------------------------------ headline: today's plan for this machine, in euro
 y1, sub_y, sub_t = wet.year1_eur.sum(), wet.subsoil_eur_per_year.sum(), wet.subsoil_eur_total.sum()
 if operation == "sowing":
-    w = wait_cost(day, {"machine_id": machine})
+    w = wait_cost(day, {"machine_id": machine}) if REAL else stubs.wait_cost(day, {"machine_id": machine})
     if isinstance(w.get("eur"), (int, float)):
         w = w | {"eur": round(w["eur"] * price_adj / 100, 0)}
 else:
@@ -198,26 +205,29 @@ def _avoidable(holding):
 
 
 st.subheader("Losses FieldGo could help avoid, per year")
-av = _avoidable(holding)
-if isinstance(av["year1_eur_mean"], float):
-    k2 = st.columns(3)
-    with k2[0]:
-        ui.metric("Compaction, year 1", ui.fmt_eur(av["year1_eur_mean"]), av["origin"], False,
-                  help="Mean per year: recorded operations done on CAUTION / NO-GO days, worst one per plot-year")
-        st.caption(f"≈ {ui.fmt_eur(av['year1_eur_mean'] / av['area_ha'])} per ha · years {av['years'][0]}-{av['years'][-1]}")
-    with k2[1]:
-        ui.metric("Subsoil, every year after", ui.fmt_eur(av["subsoil_eur_per_year_mean"]), av["origin"], False,
-                  help="Long-term subsoil part (RECARE 2018) added by each season's wet traffic")
-        st.caption(f"for ~{av['subsoil_years']} years from each season's damage")
-    with k2[2]:
-        d = av["delay_weather_eur_median"]
-        ui.metric("Late sowing, weather part", ui.fmt_eur(d), av["origin"], False,
-                  help="Median-year cost of delay caused by weather (recoverable with planning and a contractor)")
-        st.caption("median year; the late-start part (rotation) is not counted")
-    st.caption("Upper bound, illustrative: " + av["note"] + " Valued with the status x load-class table (records have "
-               "no machine, tyre or soil-moisture data).")
+if not REAL:
+    st.caption("Needs the farm's operation records (data extracts).")
 else:
-    st.caption("Not available for this farm (no operation records).")
+    av = _avoidable(holding)
+    if isinstance(av["year1_eur_mean"], float):
+        k2 = st.columns(3)
+        with k2[0]:
+            ui.metric("Compaction, year 1", ui.fmt_eur(av["year1_eur_mean"]), av["origin"], False,
+                      help="Mean per year: recorded operations done on CAUTION / NO-GO days, worst one per plot-year")
+            st.caption(f"≈ {ui.fmt_eur(av['year1_eur_mean'] / av['area_ha'])} per ha · years {av['years'][0]}-{av['years'][-1]}")
+        with k2[1]:
+            ui.metric("Subsoil, every year after", ui.fmt_eur(av["subsoil_eur_per_year_mean"]), av["origin"], False,
+                      help="Long-term subsoil part (RECARE 2018) added by each season's wet traffic")
+            st.caption(f"for ~{av['subsoil_years']} years from each season's damage")
+        with k2[2]:
+            d = av["delay_weather_eur_median"]
+            ui.metric("Late sowing, weather part", ui.fmt_eur(d), av["origin"], False,
+                      help="Median-year cost of delay caused by weather (recoverable with planning and a contractor)")
+            st.caption("median year; the late-start part (rotation) is not counted")
+        st.caption("Upper bound, illustrative: " + av["note"] + " Valued with the status x load-class table (records have "
+                   "no machine, tyre or soil-moisture data).")
+    else:
+        st.caption("Not available for this farm (no operation records).")
 
 with st.expander("Method and assumptions"):
     st.markdown("""

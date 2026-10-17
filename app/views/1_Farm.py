@@ -1,4 +1,4 @@
-"""Farm page: headline numbers, farm map and today's plan coloured by the replay day's status."""
+"""Farm page: headline numbers and today's plan coloured by the replay day's status."""
 import pandas as pd
 import streamlit as st
 
@@ -12,7 +12,6 @@ holding = st.session_state["farm"]
 
 if not REAL:
     from engine import stubs
-    st.warning("FIELDGO_DATA_DIR is not set: showing stub numbers.")
     fs, farm = stubs.farm_summary(holding), stubs.load_farm(holding)
     farm["status"] = "not available"
 else:
@@ -54,19 +53,6 @@ if REAL:
     farm = farm.assign(status=farm.parcel_id.map(statuses).fillna("not available"))
     st.caption(f"Status on {pd.Timestamp(replay):%d %b %Y} for {prm.MACHINES[machine]['profile'].lower()} "
                f"(class {lc}, replay weather).")
-
-# ------------------------------------------------------------------ A2: map of the farm coloured by status
-if REAL:
-    from components import farm_map
-    lbl = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
-    fig = farm_map.figure(farm, height=640, labels=lbl)
-    if fig is not None:
-        st.markdown("#### Farm map: who can go where today")
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-        st.caption("30 of the farm's plots drawn on outlines traced from a real orthophoto of rural Wielkopolska "
-                   "(GUGiK, geoportal.gov.pl, open data). The location is illustrative: the organisers' plot shapes "
-                   "are placeholders. Crop, real area, soil and status on hover come from the data and the engine. "
-                   "In production: the farmer's own IACS field boundaries.")
 
 # ------------------------------------------------------------------ A1: today's plan for the whole farm
 if REAL:

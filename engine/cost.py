@@ -39,8 +39,12 @@ def default_economics(holding_id: str | None = None) -> dict:
     """Expected yield = mean synthetic yield of the farm's parcels per crop; price = mean Jul-Aug market price.
 
     Years: the replay range (2015-2024) clipped to the synthetic campaigns (2017-2026) -> 2017-2024.
+    Without extracts, uses the stub yield/price table so the UI can still recalculate.
     """
     import config
+    if config.data_dir_or_none() is None:
+        from engine import stubs
+        return stubs.economics()
     from engine import data
     holding_id = holding_id or prm.DEMO["holding_id"].value
     y0, y1 = prm.DEMO["replay_year_min"].value, prm.DEMO["replay_year_max"].value

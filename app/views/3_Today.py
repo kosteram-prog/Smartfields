@@ -4,7 +4,7 @@ import streamlit as st
 
 import config
 import ui
-from components import compaction_panel, decision, mark_done, money_line, plan_card
+from components import compaction_panel, decision, farm_map, mark_done, plan_card
 from engine import params as prm
 
 replay = ui.shell("Today")
@@ -18,10 +18,19 @@ if REAL:
         f = data.load_farm(holding)
         f["autumn"] = f.crop.isin(["BARL", "COWT", "RAPE"])
         return f.sort_values(["autumn", "clay_pct"], ascending=[False, False])
+
+    @st.cache_data(show_spinner="Status of every plot...")
+    def all_status(holding, date, machine):
+        from engine import soil, status
+        f = data.load_farm(holding)
+        sw = soil.soil_water(f, data.load_weather(f.nuts3.iloc[0]))
+        sw = sw[sw.date == pd.Timestamp(date)]
+        lc, _ = status.axle_load_class(machine, 100)
+        st_ = status.status_table(sw, f, lc)
+        return dict(zip(st_.parcel_id, st_.status))
 else:
     from engine import stubs
     from engine.stubs import today as run_today
-    st.warning("FIELDGO_DATA_DIR is not set: showing stub numbers.")
 
     def parcels(holding):
         return stubs.load_farm(holding)
@@ -36,62 +45,73 @@ def assess(parcel, date, machine, load, passes, operation, observation, custom, 
 
 farm = parcels(st.session_state["farm"])
 label = {r.parcel_id: ui.parcel_label(r.parcel_id, r.crop, r.area_ha, r.clay_pct, r.sand_pct) for r in farm.itertuples()}
-c = st.columns([3, 1.4, 2.4, 1.6, 1])
-parcel = ui.pick(c[0], "selectbox", "Plot", "parcel", list(farm.parcel_id), format_func=label.get)
-operation = ui.pick(c[1], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
-machine = ui.pick(c[2], "selectbox", "Machine", "machine", list(prm.MACHINES),
-                         format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
-load = ui.pick(c[3], "slider", "Load (%)", "load", min_value=0, max_value=100)
-passes = c[4].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
-c2 = st.columns([3, 1.4, 1.6])
-observation = c2[0].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
-                               help="A hand test on the wettest spot raises confidence")
+ui.init_state()
+ids = list(farm.parcel_id)
+if st.session_state.get("parcel") not in ids:
+    st.session_state["parcel"] = ids[0]
+parcel = st.session_state["parcel"]
+
+st.markdown("**Which plot can you go on?**")
+bar = st.columns([1.4, 2.6, 2.0, 1.1], gap="medium")
+operation = ui.pick(bar[0], "selectbox", "Operation", "operation", ["sowing", "fertilising", "spraying"])
+machine = ui.pick(bar[1], "selectbox", "Machine", "machine", list(prm.MACHINES),
+                  format_func=lambda m: f"{m}: {prm.MACHINES[m]['profile']}")
+load = ui.pick(bar[2], "slider", "Load (%)", "load", min_value=0, max_value=100)
+passes = bar[3].number_input("Passes", 1, int(prm.PASSES["max_passes"].value), 1)
 custom = None
-with c2[1].popover("Use my own machine"):
+tyre_bar = None
+bd = None
+opt = st.columns([1.15, 1.45, 2], gap="medium")
+with opt[0].popover("Use my own machine"):
     use_custom = st.checkbox("Use my machine instead of the profile", key="use_custom")
     cm_name = st.text_input("Name", "My tractor + drill", key="cm_name")
     cm_axle = st.number_input("Max axle load at this load (t)", 0.5, 20.0, 6.0, 0.5, key="cm_axle",
                               help="Heaviest axle with the current load (weighbridge or manufacturer data)")
     if use_custom:
         custom = {"name": cm_name, "axle_t": float(cm_axle)}
-tyre_bar = None
-with c2[2].popover("My tyre pressure (optional)"):
+with opt[1].popover("My tyre pressure (optional)"):
     use_tyre = st.checkbox("Check compaction with my tyre pressure", key="use_tyre",
                            help="Without it FieldGo uses the default table (status x axle load). With it: stress in "
                                 "the soil vs soil strength today, Terranimo-style.")
-    bar = st.number_input("Inflation pressure (bar)", 0.4, 4.0, 1.6, 0.1, key="tyre_bar",
-                          help="Field pressure of the heaviest axle's tyres. Wheel load = axle load / 2.")
+    tyre_p = st.number_input("Inflation pressure (bar)", 0.4, 4.0, 1.6, 0.1, key="tyre_bar",
+                             help="Field pressure of the heaviest axle's tyres. Wheel load = axle load / 2.")
     bd = st.number_input("Subsoil bulk density 30-60 cm (g/cm³, optional)", min_value=1.0, max_value=2.0, value=None,
                          step=0.05, key="subsoil_bd", placeholder="unknown",
                          help="From a soil core or SoilGrids (30-60 cm). Dense glacial subsoils are often 1.6-1.8. "
                               "Without it FieldGo uses a precautionary default strength.")
     if use_tyre:
-        tyre_bar = float(bar)
+        tyre_bar = float(tyre_p)
 
-t = assess(parcel, pd.Timestamp(replay), machine, load, int(passes), operation, observation or None, custom,
+when = pd.Timestamp(replay)
+if REAL:
+    farm = farm.assign(status=farm.parcel_id.map(all_status(st.session_state["farm"], when, machine))
+                       .fillna("not available"))
+
+farm_map.render_decision(farm, selected=parcel, real=REAL, height=460)
+
+st.markdown("**If you want the analysis for one plot**")
+detail = st.columns([3, 2])
+parcel = ui.pick(detail[0], "selectbox", "Plot", "parcel", ids, format_func=label.get)
+observation = detail[1].text_input("Your observation (optional)", placeholder="e.g. ball test: soil crumbles / soil ribbons",
+                                   help="A hand test on the wettest spot raises confidence")
+
+t = assess(parcel, when, machine, load, int(passes), operation, observation or None, custom,
            tyre_bar, float(bd) if (tyre_bar and bd) else None)
 stub = not REAL
-when = pd.Timestamp(replay)
 
-# ------------------------------------------------------------------ row 1: status · next days · why
-c_status, c_next, c_why = st.columns([1.1, 1.5, 1.7])
+# ------------------------------------------------------------------ verdict, then outlook, then why
+c_status, c_next = st.columns([1, 1.25], gap="large")
 with c_status:
-    ui.status_tile(f"{ui.field_name(parcel)} · {when:%d %b %Y}", t["status"], size="3rem")
-    a, s = st.columns(2)
-    with a:
-        ui.status_tile("Plot access", t["access"], size="0.95rem")
-    with s:
-        ui.status_tile("Operation", t["suitability"], size="0.95rem")
+    st.markdown("**Today**")
+    ui.status_tile(f"{ui.field_name(parcel)} · {when:%d %b %Y}", t["status"], size="2.5rem", min_height="6.4rem")
     prof = custom["name"] if custom else prm.MACHINES[machine]["profile"]
     st.caption(f"{prof} at {load}% load: {t.get('axle_load_t')} t on the heaviest axle "
                + ("(your machine data)" if custom else "(typical machine, assumption)"))
     ui.show_origin(t["origin"], stub)
 with c_next:
     st.markdown("**Next 72 hours**")
-    cols = st.columns(3)
-    for col, d in zip(cols, t["strip72"]):
-        with col:
-            ui.status_tile(pd.Timestamp(d["date"]).strftime("%a %d"), d["status"], size="0.95rem")
+    ui.status_strip([(pd.Timestamp(d["date"]).strftime("%a %d"), d["status"]) for d in t["strip72"]],
+                    size="1.1rem", min_height="6.4rem")
     first = t.get("days_to_first_go")
     if first is not None:
         st.caption("First GO: " + ("today" if first == 0 else f"in {first} day(s)" if isinstance(first, int) else str(first)))
@@ -103,14 +123,18 @@ with c_next:
             f"{pd.Timestamp(o['date']):%a %d}: {o['status']}</span>" for o in out7)
         st.markdown(f"<div><small>Next 7 days:</small> {chips}</div>", unsafe_allow_html=True)
     st.caption("Replay: the weather that followed this day plays the forecast.")
-with c_why:
-    st.markdown("**Why**")
-    for r in ui.plain_reasons(t):
-        st.markdown(r)
-    conf = t["confidence"]
-    st.markdown(f"<small>Data quality: <b>{t.get('data_quality', 'medium')}</b> · Confidence: <b>"
-                f"{conf if isinstance(conf, str) else f'{conf}%'}</b></small>", unsafe_allow_html=True)
-    st.markdown(f"**Best next check:** {t['best_next_check']}")
+
+st.markdown("**Access and operation**")
+ui.status_strip([("Plot access", t["access"]), ("Operation", t["suitability"])],
+                size="1.25rem", min_height="5.2rem")
+
+st.markdown("**Why**")
+for r in ui.plain_reasons(t):
+    st.markdown(r)
+conf = t["confidence"]
+st.caption(f"Data quality: {t.get('data_quality', 'medium')} · Confidence: "
+           f"{conf if isinstance(conf, str) else f'{conf}%'}")
+st.markdown(f"**Best next check:** {t['best_next_check']}")
 
 # ------------------------------------------------------------------ row 2: go now or wait, in euro
 if operation == "fertilising":
@@ -132,8 +156,6 @@ if operation == "fertilising":
                 st.markdown(f"Indicative N at risk: **{lo:.0f}-{hi:.0f} kg N/ha** (range, prototype)")
             ui.show_origin(nc["origin"], False)
 decision.render(t, when, machine, load, int(passes), tyre_bar)
-if not REAL:
-    money_line.render(when, {"parcel_id": parcel, "machine_id": machine, "load_pct": load, "passes": int(passes)})
 
 # ------------------------------------------------------------------ row 3: safer plan (shown at once when not GO)
 if t["status"] in ("CAUTION", "NO-GO"):
