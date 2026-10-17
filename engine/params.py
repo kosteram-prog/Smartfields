@@ -307,3 +307,11 @@ SENSITIVITY_VARIANTS = P([
     ("Rain override today >= 2 mm", "rain_today", 2.0), ("Rain override today >= 10 mm", "rain_today", 10.0),
     ("Previous-24 h override >= 5 mm", "rain_prev24", 5.0),
 ], "", "pre-event sensitivity test (bucket-model-test-FARM-13525.md)")
+# Soil of the real field, best source first (17 Oct): measured on the field > SoilGrids 250 m at the field point >
+# regional NUTS3 mean (in the extracts). Fill a level with {"clay_pct", "sand_pct", "om_pct"} when you have it.
+REAL_FIELD_SOIL = {
+    "measured": P(None, "%", "lab analysis / LENs field diagnostics for Gasawy 28 (not provided yet)", "real"),
+    "soilgrids_point": P(None, "%", "SoilGrids 2.0 250 m at the field centroid 16.64442 E, 52.59934 N, 0-30 cm "
+                         "(ISRIC REST blocks automated download; enter by hand from soilgrids.org)", "modelled"),
+    "centroid": P((16.64442, 52.59934), "lon, lat", "computed from pole-gasawy/gasawy_28.geojson (GUGiK ULDK)", "real"),
+}

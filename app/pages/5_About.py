@@ -75,13 +75,21 @@ if config.data_dir_or_none() is not None:
     st.subheader("Does the model agree with the satellite?")
 
     @st.cache_data(show_spinner="Comparing with Sentinel-1...")
-    def _radar():
-        return validate.radar_vs_model()
+    def _radar(measured):
+        return validate.radar_vs_model(measured=dict(measured) if measured else None)
 
-    r = _radar()
+    with st.expander("Soil of this field: use a soil analysis if you have one (best source first)"):
+        st.caption("Order: your soil analysis > SoilGrids 250 m at the field point > regional SoilGrids mean (NUTS3).")
+        use = st.checkbox("Use my soil analysis for Gasawy 28", key="use_field_soil")
+        c = st.columns(3)
+        sand = c[0].number_input("Sand %", 0.0, 100.0, 60.0, 1.0, key="fs_sand")
+        clay = c[1].number_input("Clay %", 0.0, 100.0, 12.0, 1.0, key="fs_clay")
+        om = c[2].number_input("Organic matter %", 0.0, 10.0, 2.0, 0.1, key="fs_om")
+    measured = (("clay_pct", clay), ("sand_pct", sand), ("om_pct", om)) if use else None
+    r = _radar(measured)
     f = r["field"]
-    st.caption(f"Real field {f['name']}, {f['area_ha']} ha near Poznań, regional SoilGrids topsoil (clay {f['clay_pct']}%, "
-               f"sand {f['sand_pct']}%, OM {f['om_pct']}%), AgERA5 {f['nuts3']} weather, the same soil-water model as "
+    st.caption(f"Real field {f['name']}, {f['area_ha']} ha near Poznań. Soil: clay {f['clay_pct']}%, sand {f['sand_pct']}%, "
+               f"OM {f['om_pct']}% from **{f['soil_source']}**. Weather AgERA5 {f['nuts3']}; the same soil-water model as "
                "the demo farm, compared with the field-mean Sentinel-1 radar backscatter (VV).")
     d, m = r["daily"], r["radar"]
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.25, 0.4, 0.35],
@@ -107,7 +115,9 @@ if config.data_dir_or_none() is not None:
                 f"- Rank correlation on all {r['n_dates']} radar dates: **{r['spearman_all']:.2f}**. On the "
                 f"{r['n_same_orbit']} same-orbit dates inside the wet period it is only {r['spearman_same_orbit']:.2f}: "
                 "the model dries the sandy topsoil faster than the radar suggests.\n"
-                "- Radar also responds to roughness and residue, so this is *consistent with the model*, not proof.")
+                "- Radar also responds to roughness and residue, so this is *consistent with the model*, not proof.\n"
+                "- The agreement hardly depends on the soil (the rain sets the order of the dates); the GO / CAUTION / "
+                "NO-GO statuses do. That is why a field soil analysis matters for the decision.")
     ui.show_origin(r["origin"], False)
 
     st.subheader("How robust are the numbers? (one assumption changed at a time)")
