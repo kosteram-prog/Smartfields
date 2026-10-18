@@ -224,6 +224,14 @@ def wait_cost(date, params: dict | None = None) -> dict:
             "origin": "real+synthetic+assumption"}
 
 
+def economics(holding_id: str | None = None) -> dict:
+    """Yield and Jul-Aug price when there are no extracts. Same order of magnitude as the synthetic farm."""
+    return {"yield_t_ha": {"BARL": 5.0, "COWT": 6.0, "RAPE": 3.5},
+            "price_eur_t": {"BARL": 200.0, "COWT": 200.0, "RAPE": 420.0},
+            "origin": "synthetic",
+            "note": "Stub yields and prices (no extracts). Change the grain-price slider to see the euros move."}
+
+
 # ----------------------------------------------------------------------------- today (Marek)
 def today(parcel_id: str, date, machine_id: str = "M2", load_pct: float = 100, passes: int = 1,
           operation: str = "sowing") -> dict:
@@ -249,7 +257,10 @@ def today(parcel_id: str, date, machine_id: str = "M2", load_pct: float = 100, p
     if row.empty or wxr.empty:
         return {"status": NA, "access": NA, "suitability": NA, "strip72": strip, "reasons": ["Stub covers Oct 2016 only"],
                 "confidence": NA, "based_on": [], "missing": ["stub data for this date"],
-                "best_next_check": NA, "conditions": {}, "load_class": cls, "axle_load_t": axle, "origin": "modelled"}
+                "best_next_check": NA, "conditions": {}, "load_class": cls, "axle_load_t": axle,
+                "parcel_id": parcel_id, "crop": getattr(pr, "crop", None), "area_ha": getattr(pr, "area_ha", None),
+                "soil": {"clay_pct": float(pr.clay_pct), "sand_pct": float(pr.sand_pct), "om_pct": float(pr.om_pct)},
+                "operation": operation, "origin": "modelled"}
     r, w = row.iloc[0], wxr.iloc[0]
     c = classify_day(r.RWC_eff, pr.clay_pct, pr.sand_pct, r.rain_today_mm, r.rain_prev24h_mm, r.tmax_c,
                      cls, passes, operation)
@@ -265,7 +276,10 @@ def today(parcel_id: str, date, machine_id: str = "M2", load_pct: float = 100, p
         "conditions": {"rwc_eff": round(float(r.RWC_eff), 2), "precip_mm": float(w.precip_mm),
                        "precip_last48h_mm": float(r.rain_prev48h_mm), "tmin_c": float(w.tmin_c),
                        "tmax_c": float(w.tmax_c), "wind_m_s": float(w.wind_m_s)},
-        "load_class": cls, "axle_load_t": axle, "origin": "modelled",
+        "load_class": cls, "axle_load_t": axle, "machine_id": machine_id, "parcel_id": parcel_id,
+        "crop": pr.crop, "area_ha": float(pr.area_ha), "operation": operation,
+        "soil": {"clay_pct": float(pr.clay_pct), "sand_pct": float(pr.sand_pct), "om_pct": float(pr.om_pct)},
+        "origin": "modelled",
     }
 
 

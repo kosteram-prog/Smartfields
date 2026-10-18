@@ -38,13 +38,31 @@ def metric(label: str, value, origin: str, stub: bool = True, help: str | None =
     show_origin(origin, stub)
 
 
-def status_tile(label: str, status: str, size: str = "2.4rem", color_as: str | None = None) -> None:
+def status_tile(label: str, status: str, size: str = "2.4rem", color_as: str | None = None,
+                min_height: str = "5.6rem") -> None:
     """Coloured tile; color_as lets another word (e.g. 'HIGH') use a status colour ('NO-GO')."""
     color = STATUS_COLORS.get(color_as or status, STATUS_COLORS["not available"])
     st.markdown(
-        f"<div style='background:{color};color:white;border-radius:12px;padding:14px 18px;text-align:center'>"
-        f"<div style='font-size:0.9rem;opacity:0.9'>{label}</div>"
-        f"<div style='font-size:{size};font-weight:700'>{status}</div></div>", unsafe_allow_html=True)
+        f"<div style='background:{color};color:white;border-radius:12px;padding:12px 14px;text-align:center;"
+        f"width:100%;box-sizing:border-box;min-height:{min_height};display:flex;flex-direction:column;"
+        f"justify-content:center'>"
+        f"<div style='font-size:0.85rem;opacity:0.92;line-height:1.25'>{label}</div>"
+        f"<div style='font-size:{size};font-weight:700;line-height:1.15;margin-top:4px'>{status}</div></div>",
+        unsafe_allow_html=True)
+
+
+def status_strip(items: list[tuple[str, str]], size: str = "1.05rem", min_height: str = "5.2rem") -> None:
+    """Equal-width status tiles in one row (access / operation, or the 72-hour strip)."""
+    cells = []
+    for label, status in items:
+        color = STATUS_COLORS.get(status, STATUS_COLORS["not available"])
+        cells.append(
+            f"<div style='flex:1;background:{color};color:white;border-radius:12px;padding:12px 8px;"
+            f"text-align:center;min-height:{min_height};box-sizing:border-box;display:flex;"
+            f"flex-direction:column;justify-content:center'>"
+            f"<div style='font-size:0.8rem;opacity:0.92;line-height:1.25'>{label}</div>"
+            f"<div style='font-size:{size};font-weight:700;line-height:1.15;margin-top:4px'>{status}</div></div>")
+    st.markdown(f"<div style='display:flex;gap:10px'>{''.join(cells)}</div>", unsafe_allow_html=True)
 
 
 def fmt_eur(x) -> str:

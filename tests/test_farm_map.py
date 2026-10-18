@@ -7,6 +7,10 @@ import pytest
 LAYOUT = Path(__file__).resolve().parents[1] / "app" / "assets" / "farm_layout.json"
 
 
+def test_demo_picture_is_shipped():
+    assert (LAYOUT.parent / "farm_map_demo.jpg").is_file()
+
+
 def test_layout_has_30_closed_fields():
     lay = json.loads(LAYOUT.read_text())
     assert len(lay["fields"]) == 30
@@ -35,8 +39,10 @@ def test_figure_builds_with_statuses():
     from components import farm_map
     ids = [f["parcel_id"] for f in farm_map.layout()["fields"]]
     farm = pd.DataFrame({"parcel_id": ids, "crop": "BARL", "area_ha": 6.0, "status": "GO"})
-    fig = farm_map.figure(farm)
+    fig = farm_map.figure(farm, selected=ids[0])
     assert sum(1 for t in fig.data if t.fill == "toself") >= 30
+    chosen = next(t for t in fig.data if t.fill == "toself" and "selected" in (t.text or ""))
+    assert chosen.line.width == 5
 
 
 def test_plot_zones_cover_every_plot_and_are_ordered():

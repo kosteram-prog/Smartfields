@@ -17,6 +17,13 @@ def test_page_runs(page):
     assert any("Replay mode" in i.value for i in at.info)
 
 
+def test_loss_page_recalculates_without_extracts():
+    at = AppTest.from_file(str(APP / "views/6_Loss.py"), default_timeout=30).run()
+    assert not at.exception, at.exception
+    assert any("Tyre pressure" in s.label for s in at.slider)
+    assert not any("needs the data extracts" in (w.value or "").lower() for w in at.warning)
+
+
 ROUTED = ["views/3_Today.py", "views/6_Loss.py", "views/1_Farm.py", "views/2_Season.py"]
 
 
