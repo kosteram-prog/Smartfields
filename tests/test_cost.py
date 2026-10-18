@@ -184,8 +184,9 @@ def test_rain_no_go_counts_even_below_the_go_limit():
     assert _g("NO-GO", 0.70)["drivers"]["wetness"] == prm.GO_NOW_MODEL["status_floor"].value["NO-GO"]
 
 
-def test_default_economics_without_extracts_still_prices_go_now():
+def test_default_economics_without_extracts_still_prices_go_now(monkeypatch):
     """Claude's go-now box must recalculate with no FIELDGO_DATA_DIR (this demo has no extracts)."""
+    monkeypatch.delenv("FIELDGO_DATA_DIR", raising=False)
     econ = cost.default_economics()
     assert econ["yield_t_ha"]["BARL"] == 5.0 and econ["price_eur_t"]["BARL"] == 200.0
     e = cost.go_now_cost("NO-GO", 1.05, 5.0, "L2", 30.0, 30.0, 2.0, "BARL", 10.0, 1.2, 1, None)
